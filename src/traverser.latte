@@ -1,0 +1,123 @@
+
+function traverser(args) {
+	var me = {};
+
+	me.traverse = (ast) => {
+		ast.body = me.stmts(ast.body);
+		return ast;
+	}
+
+	me.stmts = (stmts) => {
+		return stmts.map(stmt => me.stmt(stmt));
+	}
+
+	me.stmt = stmt => {
+		switch (stmt.type) {
+			case 'BlockStatement':
+				stmt.body = me.stmts(stmt.body);
+				return stmt;
+
+			case 'VariableDeclaration':
+				stmt.declarations = me.decls(stmt.declarations);
+				return stmt;
+
+			case 'FunctionDeclaration':
+				return me.funcDecl(stmt);
+
+			case 'ExpressionStatement':
+		        stmt.expression = me.expr(stmt.expression);
+		        return stmt;
+
+		    case 'SwitchStatement':
+		    	stmt.discriminant = me.expr(stmt.discriminant);
+		    	stmt.cases = stmt.cases.map(function (c) {
+		    		c.consequent = me.stmts(c.consequent);
+		    		return c;
+		    	})
+		    	return stmt;
+
+		    case 'ReturnStatement':
+		    	return {
+		    		type: 'ReturnStatement',
+		    		argument: me.expr(stmt.argument)
+		    	}
+
+			default:
+				console.log("Unhandled stmt: ", stmt.type);
+				return stmt;
+		}
+	}
+
+	me.decls = (decls) => {
+		return decls.map(me.decl);
+	}
+	me.decl = (decl) => {
+		decl.init = me.expr(decl.init);
+		return decl;
+	}
+	me.funcDecl = (fn) => {
+		return me.func(fn);
+	}
+	me.expr = (expr, context) => {
+		switch (expr.type) {
+			case 'FunctionExpression':
+				return me.funcExpr(expr, context);
+			case 'ArrowFunctionExpression':
+				return me.arrowFuncExpr(expr, context);
+			case 'CallExpression':
+				return {
+					type: 'CallExpression',
+					callee: me.expr(expr.callee, context),
+					arguments: expr.arguments.map(arg => me.expr(arg, context))
+				}
+			case 'ObjectExpression':
+				return {
+					type: 'ObjectExpression',
+					properties: expr.properties.map(p => {
+						p.value = me.expr(p.value, {
+							lexicalThis: context && context.assignee
+						});
+						return p;
+					})
+				}
+			case 'AssignmentExpression':
+		        expr.right = me.expr(expr.right, {
+		        	assignee: expr.left
+		        });
+		        return expr;
+		    case 'Identifier':
+		    	return me.ident(expr, context);
+		    case 'ThisExpression':
+		    	return me.thisExpr(expr, context);
+			default:
+				console.log("Unhandled expr: ", expr.type);
+				return expr;
+		}
+	}
+	
+	me.arrowFuncExpr = (fn) => fn;
+
+	me.funcExpr = (fn) => {
+		return me.func(fn);
+	}
+
+	me.func = (fn) => {
+		fn.body.body = me.stmts(fn.body.body);
+
+		return fn;
+	}
+
+	me.ident = x => x;
+	me.thisExpr = x => x;
+
+	me.super = {};
+
+	for ( var n in args ) {
+		me.super[n] = me[n];
+		me[n] = args[n]
+	}
+
+	return me;
+}
+
+module.exports = traverser;

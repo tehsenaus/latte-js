@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+
+var esprima = require("../lib/esprima-latte"),
+	escodegen = require("escodegen"),
+	fs = require("node-fs"),
+	path = require('path'),
+	glob = require("glob"),
+	util = require("util");
+
+var argv = require('optimist')
+    .boolean(['c', 'v', 'd'])
+    .argv
+;
+
+var transform = require("../lib/transform");
+
+var files = argv._,
+	inDir = process.cwd();
+
+if ( !files.length ) {
+	console.error('No input files specified!');
+	process.exit(-1);
+}
+
+// Whole directory?
+if ( files[0][files[0].length-1] == '/' ) {
+	var inPath = files[0];
+	inDir = path.join(inDir, inPath);
+	files = glob.sync(files[0] + '**/*.latte').map(function (file) {
+		console.log(file, inPath);
+		return file.slice(inPath.length);
+	})
+}
+
+console.log(files);
+
+// Compile each input file
+var compiled = files.map(function (file) {
+
+
+	var src = fs.readFileSync(path.join(inDir, file), 'utf8');
+	var ast = esprima.parse(src);
+
+	ast = transform(ast);
+
+	try {
+		var output = escodegen.generate(ast);
+	} catch (e) {
+		fs.writeFileSync('ast.debug.js', util.inspect(ast, true, null))
+		throw e;	
+	}
+
+	if ( argv.d ) {
+		console.log("COMPILED SOURCE ----");
+		console.log(output);
+		console.log("--------------------")
+	}
+
+	return {
+		path: file,
+		output: output
+	}
+});
+
+
+
+
+
+if ( argv.c ) {
+
+	var out = path.join(process.cwd(), argv.o);
+	fs.mkdirSync(out, null, true);
+
+	compiled.forEach(function (file) { 
+		var dst = file.path.replace('.latte', '.js');
+
+		fs.writeFileSync(path.join(out, dst), file.output, 'utf8')
+	})
+
+} else {
+	// Run the source
+	require.main._compile(compiled[0].output)
+
+}
