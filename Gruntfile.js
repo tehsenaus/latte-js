@@ -5,7 +5,7 @@ module.exports = function(grunt) {
     pkg: grunt.file.readJSON('package.json'),
     shell: {
       build: {
-        command: 'latte -c src/ -o lib/',
+        command: 'PATH=$(npm bin):$PATH latte -c src/ -o lib/',
         options: {
             stderr: true,
             failOnError: true

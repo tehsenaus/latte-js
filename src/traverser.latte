@@ -30,7 +30,7 @@ function traverser(args) {
 
 		    case 'SwitchStatement':
 		    	stmt.discriminant = me.expr(stmt.discriminant);
-		    	stmt.cases = stmt.cases.map(function (c) {
+		    	stmt.cases = stmt.cases.map(c => {
 		    		c.consequent = me.stmts(c.consequent);
 		    		return c;
 		    	})

@@ -2,8 +2,9 @@
 
 var esprima = require("../lib/esprima-latte"),
 	escodegen = require("escodegen"),
-	fs = require("node-fs"),
+	fs = require("fs"),
 	path = require('path'),
+	mkdirp = require('mkdirp'),
 	glob = require("glob"),
 	util = require("util");
 
@@ -69,7 +70,7 @@ var compiled = files.map(function (file) {
 if ( argv.c ) {
 
 	var out = path.join(process.cwd(), argv.o);
-	fs.mkdirSync(out, null, true);
+	mkdirp.sync(out);
 
 	compiled.forEach(function (file) { 
 		var dst = file.path.replace('.latte', '.js');

@@ -1,6 +1,6 @@
 {
   "name": "latte",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "JavaScript, with a little milk and sugar",
   "main": "index.js",
   "bin": {
@@ -32,7 +32,7 @@
     "escodegen": "0.0.26",
     "optimist": "~0.6.0",
     "glob": "~3.2.6",
-    "node-fs": "~0.1.7"
+    "mkdirp": "~0.3.5"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
