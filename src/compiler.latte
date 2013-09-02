@@ -2,7 +2,6 @@
 var esprima = require("../lib/esprima-latte"),
 	escodegen = require("escodegen"),
 	transform = require("../lib/transform"),
-	streams = require('stream'),
 	es = require('event-stream'),
 	fs = require('fs'),
 	path = require('path'),
@@ -13,39 +12,33 @@ function compiler(options) {
 	var interactive = options.interactive,
 		encoding = options.encoding || 'utf8';
 
-	var stream = streams.Transform();
-
-	var buf = [];
-
+	var buf = [], ending = false;
 	function compileBuffered() {
 		var output = compile(buf.join(""));
-		stream.push(output);
 		buf = [];
-		if (!interactive) stream.push(null);
+		return output;
 	}
-	stream._transform = function (chunk, enc, next) {
-		//console.log(chunk, enc);
+	var stream = es.map(function (data, callback) {
+		buf.push(data);
 
-		buf.push(chunk.toString(encoding));
-
-		if ( interactive ) {
+		if ( interactive || ending ) {
 			try {
-				compileBuffered()
+				callback(null, compileBuffered());
 			} catch (e) {
 				// Wait for more data
 				//console.error(buf.join(""), e);
+				callback(interactive ? null : e);
 			}
-		}
-
-		next();
-	};
-	stream._flush = function (callback) {
-		try {
-			compileBuffered();
+		} else {
 			callback();
-		} catch (e) {
-			return callback(e);
 		}
+	})
+
+	var _end = stream.end;
+	stream.end = function (data) {
+		ending = true;
+		stream.write(data || '');
+		_end.call(this)
 	}
 
 	return stream;
