@@ -3,9 +3,19 @@ module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
+    latte: {
+      build: {
+        inputDir: 'src/',
+        outputDir: 'lib/'
+      },
+      buildTest: {
+        inputDir: 'test/src/',
+        outputDir: 'test/out/'
+      }
+    },
     shell: {
       build: {
-        command: 'PATH=$(npm bin):$PATH latte -c src/ -o lib/',
+        command: 'node_modules\\.bin\\latte -c src/ -o lib/',
         options: {
             stderr: true,
             failOnError: true
@@ -44,10 +54,11 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-mocha-test');
+  grunt.loadTasks('tasks');
   
   grunt.registerTask('build', ['shell:build']);
 
-  grunt.registerTask('test', ['shell:buildTest', 'mochaTest']);
+  grunt.registerTask('test', ['latte:buildTest', 'mochaTest']);
 
   // Default task(s).
   grunt.registerTask('default', ['build', 'test']);

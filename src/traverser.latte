@@ -28,6 +28,23 @@ function traverser(args) {
 		        stmt.expression = me.expr(stmt.expression);
 		        return stmt;
 
+		    case 'IfStatement': 
+		    	return {
+		    		type: 'IfStatement',
+		    		test: me.expr(stmt.test),
+		    		consequent: me.stmt(stmt.consequent),
+		    		alternate: stmt.alternate && me.stmt(stmt.alternate)
+		    	}
+
+		    case 'ForStatement': 
+		    	return {
+		    		type: 'ForStatement',
+		    		init: stmt.init && me.stmt(stmt.init),
+		    		test: stmt.test && me.expr(stmt.test),
+		    		update: stmt.update && me.expr(stmt.update),
+		    		body: me.stmt(stmt.body)
+		    	}
+
 		    case 'SwitchStatement':
 		    	stmt.discriminant = me.expr(stmt.discriminant);
 		    	stmt.cases = stmt.cases.map(c => {
@@ -89,10 +106,12 @@ function traverser(args) {
 		    	return me.ident(expr, context);
 		    case 'ThisExpression':
 		    	return me.thisExpr(expr, context);
+		    case 'Literal':
+		    	break;
 			default:
 				console.log("Unhandled expr: ", expr.type);
-				return expr;
 		}
+		return expr;
 	}
 	
 	me.arrowFuncExpr = (fn) => fn;

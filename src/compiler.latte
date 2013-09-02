@@ -1,0 +1,134 @@
+
+var esprima = require("../lib/esprima-latte"),
+	escodegen = require("escodegen"),
+	transform = require("../lib/transform"),
+	streams = require('stream'),
+	es = require('event-stream'),
+	fs = require('fs'),
+	path = require('path'),
+	glob = require("glob");
+
+function compiler(options) {
+	options = options || {};
+	var interactive = options.interactive,
+		encoding = options.encoding || 'utf8';
+
+	var stream = streams.Transform();
+
+	var buf = [];
+
+	function compileBuffered() {
+		var output = compile(buf.join(""));
+		stream.push(output);
+		buf = [];
+		if (!interactive) stream.push(null);
+	}
+	stream._transform = function (chunk, enc, next) {
+		//console.log(chunk, enc);
+
+		buf.push(chunk.toString(encoding));
+
+		if ( interactive ) {
+			try {
+				compileBuffered()
+			} catch (e) {
+				// Wait for more data
+				//console.error(buf.join(""), e);
+			}
+		}
+
+		next();
+	};
+	stream._flush = function (callback) {
+		try {
+			compileBuffered();
+			callback();
+		} catch (e) {
+			return callback(e);
+		}
+	}
+
+	return stream;
+}
+module.exports = compiler;
+
+compiler.files = function (options) {
+	var inputDir = path.join(process.cwd(), options.inputDir),
+		outputDir = path.join(process.cwd(), options.outputDir);
+
+	return es.pipeline(
+		es.split(),
+		es.map(function (file, cb) {
+			if (!file) return cb();
+
+			var filePath = path.join(inputDir, file),
+				output = file.replace('.latte', '.js')
+
+			var compiler = compileFile(filePath, options);
+
+			compiler.on('end', function () {
+				cb(null, output);
+			});
+			compiler.on('error', function (e) {
+				cb(e);
+			});
+
+			compiler.pipe(fs.createWriteStream(
+				path.join(outputDir, output)
+			));
+		}),
+		es.join('\n')
+	)
+}
+
+
+function compile(source) {
+	var ast = esprima.parse(source);
+
+	ast = transform(ast);
+
+	return escodegen.generate(ast);
+}
+compiler.compile = compile;
+
+
+function compileFile(file, options) {
+	return fs.createReadStream(file).pipe(
+		compiler(options)
+	)
+}
+compiler.compileFile = compileFile;
+
+function compileFiles(files, options) {
+	var fileCompiler = compiler.files(options);
+
+	files.forEach(file => {
+		fileCompiler.write(file + '\n');
+	})
+	fileCompiler.end();
+
+	return fileCompiler;
+}
+compiler.compileFiles = compileFiles;
+
+function compileDir(inputDir, outputDir, options) {
+	options.inputDir = inputDir;
+	options.outputDir = outputDir;
+
+	var fileCompiler = compiler.files(options);
+
+	glob(inputDir + '**/*.latte', function (err, files) {
+		files.forEach(file => {
+			var name = file.slice(inputDir.length);
+			fileCompiler.write(name + '\n');
+		})
+		fileCompiler.end();
+	});
+
+	return fileCompiler;
+}
+compiler.compileDir = compileDir;
+
+if ( require.main == module ) {
+	require("./repl")();
+}

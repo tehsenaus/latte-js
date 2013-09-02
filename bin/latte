@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-var esprima = require("../lib/esprima-latte"),
-	escodegen = require("escodegen"),
+var compiler = require("../lib/compiler"),
 	fs = require("fs"),
 	path = require('path'),
 	mkdirp = require('mkdirp'),
@@ -27,62 +26,46 @@ if ( argv.version ) {
 var files = argv._,
 	inDir = process.cwd();
 
-if ( !files.length || argv.help ) {
+if ( argv.help ) {
 	optimist.showHelp();
 	process.exit(-1);
 }
 
+var compilerOptions = {
+	outputDir: argv.o
+};
 
-var transform = require("../lib/transform");
+if ( !files.length ) {
+	return require('../lib/repl')();
+}
 
 
 // Whole directory?
 if ( files[0][files[0].length-1] == '/' ) {
-	var inPath = files[0];
-	inDir = path.join(inDir, inPath);
-	files = glob.sync(files[0] + '**/*.latte').map(function (file) {
-		console.log(file, inPath);
-		return file.slice(inPath.length);
+
+	var compiledFiles = compiler.compileDir(files[0], argv.o, compilerOptions);
+	compiledFiles.on('error', function (e) {
+		console.error(e);
+		process.exit(-1);
 	})
+	return compiledFiles.pipe(process.stdout);
+
+} else if ( argv.c ) {
+
+	compiler.compileFiles(files, compilerOptions)
+
+} else {
+
+
+
 }
-
-console.log(files);
-
-// Compile each input file
-var compiled = files.map(function (file) {
-
-
-	var src = fs.readFileSync(path.join(inDir, file), 'utf8');
-	var ast = esprima.parse(src);
-
-	ast = transform(ast);
-
-	try {
-		var output = escodegen.generate(ast);
-	} catch (e) {
-		fs.writeFileSync('ast.debug.js', util.inspect(ast, true, null))
-		throw e;	
-	}
-
-	if ( argv.d ) {
-		console.log("COMPILED SOURCE ----");
-		console.log(output);
-		console.log("--------------------")
-	}
-
-	return {
-		path: file,
-		output: output
-	}
-});
-
 
 
 
 
 if ( argv.c ) {
 
-	var out = path.join(process.cwd(), argv.o);
+	
 	mkdirp.sync(out);
 
 	compiled.forEach(function (file) { 
