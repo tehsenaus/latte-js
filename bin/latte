@@ -8,20 +8,33 @@ var esprima = require("../lib/esprima-latte"),
 	glob = require("glob"),
 	util = require("util");
 
-var argv = require('optimist')
-    .boolean(['c', 'v', 'd'])
-    .argv
-;
+var optimist = require('optimist')
+	.usage('Latte.js compiler.\nUsage: latte [options] [--] files...')
+    .boolean(['c', 'v', 'd', 'version'])
+    .alias('c', 'compile')
+    .alias('o', 'output')
+    .alias('v', 'verbose')
+    .describe('c', 'Compile input files. If not specified, evaluates the files.')
+    .describe('o', 'Output directory, to be used with --compile.')
+    .describe('version', 'Show version')
+, argv = optimist.argv;
 
-var transform = require("../lib/transform");
+if ( argv.version ) {
+	console.log(require("../package.json").version);
+	process.exit(0);
+}
 
 var files = argv._,
 	inDir = process.cwd();
 
-if ( !files.length ) {
-	console.error('No input files specified!');
+if ( !files.length || argv.help ) {
+	optimist.showHelp();
 	process.exit(-1);
 }
+
+
+var transform = require("../lib/transform");
+
 
 // Whole directory?
 if ( files[0][files[0].length-1] == '/' ) {
