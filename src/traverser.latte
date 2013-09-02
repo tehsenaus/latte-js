@@ -12,6 +12,7 @@ function traverser(args) {
 	}
 
 	me.stmt = stmt => {
+		if (!stmt) return stmt;
 		switch (stmt.type) {
 			case 'BlockStatement':
 				stmt.body = me.stmts(stmt.body);
@@ -31,7 +32,7 @@ function traverser(args) {
 		    case 'IfStatement': 
 		    	return {
 		    		type: 'IfStatement',
-		    		test: me.expr(stmt.test),
+		    		test: stmt.test && me.expr(stmt.test),
 		    		consequent: me.stmt(stmt.consequent),
 		    		alternate: stmt.alternate && me.stmt(stmt.alternate)
 		    	}
@@ -76,6 +77,7 @@ function traverser(args) {
 		return me.func(fn);
 	}
 	me.expr = (expr, context) => {
+		if (!expr) return expr;
 		switch (expr.type) {
 			case 'FunctionExpression':
 				return me.funcExpr(expr, context);
