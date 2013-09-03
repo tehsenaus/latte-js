@@ -5,7 +5,8 @@ var esprima = require("../lib/esprima-latte"),
 	es = require('event-stream'),
 	fs = require('fs'),
 	path = require('path'),
-	glob = require("glob");
+	glob = require("glob"),
+	util = require('util');
 
 function compiler(options) {
 	options = options || {};
@@ -14,7 +15,7 @@ function compiler(options) {
 
 	var buf = [], ending = false;
 	function compileBuffered() {
-		var output = compile(buf.join(""));
+		var output = compile(buf.join(""), options);
 		buf = [];
 		return output;
 	}
@@ -26,7 +27,9 @@ function compiler(options) {
 				callback(null, compileBuffered());
 			} catch (e) {
 				// Wait for more data
-				//console.error(buf.join(""), e);
+				if ( !interactive ) {
+					console.error(e.stack);
+				}
 				callback(interactive ? null : e);
 			}
 		} else {
@@ -49,18 +52,21 @@ compiler.files = function (options) {
 	var inputDir = path.join(process.cwd(), options.inputDir),
 		outputDir = path.join(process.cwd(), options.outputDir);
 
+	var stream;
 	return es.pipeline(
 		es.split(),
-		es.map(function (file, cb) {
+		stream = es.map(function (file, cb) {
 			if (!file) return cb();
 
 			var filePath = path.join(inputDir, file),
 				output = file.replace('.latte', '.js')
 
+			stream.emit('data', output);
+
 			var compiler = compileFile(filePath, options);
 
 			compiler.on('end', function () {
-				cb(null, output);
+				cb(null);
 			});
 			compiler.on('error', function (e) {
 				cb(e);
@@ -75,10 +81,18 @@ compiler.files = function (options) {
 }
 
 
-function compile(source) {
+function compile(source, options) {
 	var ast = esprima.parse(source);
 
+	if ( options.debug ) {
+		fs.writeFileSync('ast.debug.js', util.inspect(ast, null, null));
+	}
+
 	ast = transform(ast);
+
+	if ( options.debug ) {
+		fs.writeFileSync('ast.debug.transformed.js', util.inspect(ast, null, null));
+	}
 
 	return escodegen.generate(ast);
 }

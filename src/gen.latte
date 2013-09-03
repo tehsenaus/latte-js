@@ -1,0 +1,42 @@
+
+module.exports = {
+
+	block: function (stmts) {
+		return {
+			type: "BlockStatement",
+			body: stmts
+		}
+	},
+
+	decl: function (id, init) {
+		return {
+	        "type": "VariableDeclarator",
+	        "id": typeof id === 'string' ? {
+	            "type": "Identifier",
+	            "name": id
+	        } : id,
+	        "init": init
+	    }
+	},
+
+
+	member: function (obj, property, options) {
+		return {
+            "type": "MemberExpression",
+            "computed": options && options.computed,
+            "object": obj,
+            "property": typeof property == "object" ? property : this.val(property)
+        }
+	},
+
+	lit: function (raw, value) {
+		return {
+            "type": "Literal",
+            "value": value === undefined ? eval(raw) : value,
+            "raw": raw
+        }
+	},
+	val: function (value) {
+		return this.lit(JSON.stringify(value), value);
+	}
+}

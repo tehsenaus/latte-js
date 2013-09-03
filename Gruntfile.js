@@ -54,7 +54,7 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-mocha-test');
-  grunt.loadTasks('tasks');
+  grunt.loadNpmTasks('latte');
   
   grunt.registerTask('build', ['latte:build']);
 

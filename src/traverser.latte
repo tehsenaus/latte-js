@@ -1,17 +1,29 @@
 
+var flatten = require("mout/array/flatten"),
+	util = require("util");
+
 function traverser(args) {
 	var me = {};
+
+	me.funcContext = (parent) => {
+		var temp = 0;
+		return {
+			temp: function () {
+				return "__t" + temp++;
+			}
+		}
+	}
 
 	me.traverse = (ast) => {
 		ast.body = me.stmts(ast.body);
 		return ast;
 	}
 
-	me.stmts = (stmts) => {
-		return stmts.map(stmt => me.stmt(stmt));
+	me.stmts = (stmts, context) => {
+		return flatten(stmts.map(stmt => me.stmt(stmt, context)));
 	}
 
-	me.stmt = stmt => {
+	me.stmt = (stmt, context) => {
 		if (!stmt) return stmt;
 		switch (stmt.type) {
 			case 'BlockStatement':
@@ -19,7 +31,7 @@ function traverser(args) {
 				return stmt;
 
 			case 'VariableDeclaration':
-				stmt.declarations = me.decls(stmt.declarations);
+				stmt.declarations = me.decls(stmt.declarations, context);
 				return stmt;
 
 			case 'FunctionDeclaration':
@@ -46,6 +58,12 @@ function traverser(args) {
 		    		body: me.stmt(stmt.body)
 		    	}
 
+		    case 'WhileStatement':
+		    case 'DoWhileStatement':
+		    	stmt.test = me.expr(stmt.test)
+		    	stmt.body = me.stmt(stmt.body)
+		    	return stmt
+
 		    case 'SwitchStatement':
 		    	stmt.discriminant = me.expr(stmt.discriminant);
 		    	stmt.cases = stmt.cases.map(c => {
@@ -55,10 +73,14 @@ function traverser(args) {
 		    	return stmt;
 
 		    case 'ReturnStatement':
+		    case 'ThrowStatement':
 		    	return {
-		    		type: 'ReturnStatement',
+		    		type: stmt.type,
 		    		argument: me.expr(stmt.argument)
 		    	}
+
+		    case undefined:
+		    	throw new Error("Fatal: Stmt type is undefined! In: " + util.inspect(stmt));
 
 			default:
 				console.log("Unhandled stmt: ", stmt.type);
@@ -66,11 +88,11 @@ function traverser(args) {
 		}
 	}
 
-	me.decls = (decls) => {
-		return decls.map(me.decl);
+	me.decls = (decls, context) => {
+		return flatten(decls.map(d => me.decl(d, context)));
 	}
-	me.decl = (decl) => {
-		decl.init = me.expr(decl.init);
+	me.decl = (decl, context) => {
+		decl.init = me.expr(decl.init, context);
 		return decl;
 	}
 	me.funcDecl = (fn) => {
@@ -84,8 +106,9 @@ function traverser(args) {
 			case 'ArrowFunctionExpression':
 				return me.arrowFuncExpr(expr, context);
 			case 'CallExpression':
+			case 'NewExpression':
 				return {
-					type: 'CallExpression',
+					type: expr.type,
 					callee: me.expr(expr.callee, context),
 					arguments: expr.arguments.map(arg => me.expr(arg, context))
 				}
@@ -99,6 +122,9 @@ function traverser(args) {
 						return p;
 					})
 				}
+			case 'ArrayExpression':
+				expr.elements = expr.elements.map(e => me.expr(e, context))
+				return expr;
 			case 'MemberExpression':
 				expr.object = me.expr(expr.object);
 				expr.property = me.expr(expr.property);
@@ -108,6 +134,20 @@ function traverser(args) {
 		        	assignee: expr.left
 		        });
 		        return expr;
+		    case 'ConditionalExpression':
+		    	expr.test = me.expr(expr.test)
+		    	expr.consequent = me.expr(expr.consequent)
+		    	expr.alternate = me.expr(expr.alternate)
+		    	return expr;
+		    case 'BinaryExpression':
+		    case 'LogicalExpression':
+		    	expr.left = me.expr(expr.left, context)
+		    	expr.right = me.expr(expr.right, context)
+		    	return expr;
+		    case 'UnaryExpression':
+		    case 'UpdateExpression':
+		    	expr.argument = me.expr(expr.argument)
+		    	return expr;
 		    case 'Identifier':
 		    	return me.ident(expr, context);
 		    case 'ThisExpression':

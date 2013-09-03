@@ -1,5 +1,6 @@
 
-var traverser = require("./traverser");
+var traverser = require("./traverser"),
+	gen = require("./gen");
 
 var insertLexicalThisTransformer = traverser({
 	func: (fn, context) => {
@@ -86,21 +87,37 @@ var quasiTransformer = traverser({
 })
 
 
+
+var arrayDestructuringTransformer = traverser({
+	decl: function (d, context) {
+		d = this.super.decl(d, context);
+		if ( d.id.type != 'ArrayPattern' ) {
+			return d;
+		}
+
+		// Transform into array of decls. This will be flattened into one
+		// declaration.
+		var temp = {
+            "type": "Identifier",
+            "name": '__destructure'
+        };
+		return [
+			// Store rhs into temp
+			gen.decl(temp, d.init)
+		].concat(d.id.elements.map(
+			(e, i) => __this.decl( gen.decl(e, gen.member(temp, i, { computed: true })) )
+		));
+	}
+})
+
+
+
 var 
 LEXICAL_THIS = '__this',
 SET_LEXICAL_THIS = {
     "type": "VariableDeclaration",
     "declarations": [
-        {
-            "type": "VariableDeclarator",
-            "id": {
-                "type": "Identifier",
-                "name": LEXICAL_THIS
-            },
-            "init": {
-                "type": "ThisExpression"
-            }
-        }
+    	gen.decl(LEXICAL_THIS, { "type": "ThisExpression" })
     ],
     "kind": "var"
 };
@@ -109,6 +126,7 @@ SET_LEXICAL_THIS = {
 var transformers = [
 	quasiTransformer,
 	arrowTransformer,
+	arrayDestructuringTransformer,
 	insertLexicalThisTransformer
 ]
 
