@@ -105,7 +105,7 @@ var arrayDestructuringTransformer = traverser({
 			// Store rhs into temp
 			gen.decl(temp, d.init)
 		].concat(d.id.elements.map(
-			(e, i) => __this.decl( gen.decl(e, gen.member(temp, i, { computed: true })) )
+			(e, i) => this.decl( gen.decl(e, gen.member(temp, i, { computed: true })) )
 		));
 	}
 })
