@@ -41,6 +41,51 @@ var arrowTransformer = traverser({
 	}
 })
 
+function makeLiteral(value, raw) {
+	return {
+        "type": "Literal",
+        "value": value,
+        "raw": raw
+    }
+}
+function makeDefaultQuasi(literals, exprs) {
+	var elems = [], i = 0;
+	while (i < literals.length - 1) {
+      elems.push(makeLiteral(literals[i].value.cooked, literals[i].value.raw));
+      elems.push(exprs[i++]);
+    }
+    elems.push(makeLiteral(literals[i].value.cooked, literals[i].value.raw));
+
+	return {
+	    "type": "CallExpression",
+	    "callee": {
+	        "type": "MemberExpression",
+	        "computed": false,
+	        "object": {
+	            "type": "ArrayExpression",
+	            "elements": elems
+	        },
+	        "property": {
+	            "type": "Identifier",
+	            "name": "join"
+	        }
+	    },
+	    "arguments": [
+	        {
+	            "type": "Literal",
+	            "value": "",
+	            "raw": "''"
+	        }
+	    ]
+	}
+}
+var quasiTransformer = traverser({
+	quasiLiteral: (q, context) => {
+		return makeDefaultQuasi(q.quasis, q.expressions.map(e => quasiTransformer.expr(e)));
+	}
+})
+
+
 var 
 LEXICAL_THIS = '__this',
 SET_LEXICAL_THIS = {
@@ -61,13 +106,17 @@ SET_LEXICAL_THIS = {
 };
 
 
-module.exports = function (ast) {
-	ast = arrowTransformer.traverse(ast);
+var transformers = [
+	quasiTransformer,
+	arrowTransformer,
+	insertLexicalThisTransformer
+]
 
-	ast = insertLexicalThisTransformer.traverse(ast);
+module.exports = function (ast) {
+
+	ast = transformers.reduce((ast, t) => t.traverse(ast), ast);
 
 	ast.body.splice(0,0, SET_LEXICAL_THIS);
 
 	return ast;
 };
-

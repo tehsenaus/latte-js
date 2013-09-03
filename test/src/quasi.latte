@@ -1,0 +1,29 @@
+
+var should = require("should");
+
+describe('Quasi Literal', function () {
+
+	it('returns basic string', function () {
+		`asdf`.should.equal('asdf')
+	})
+
+	it('supports multilines', function () {
+		`asdf
+ghjk`.should.eql('asdf\nghjk')
+	})
+
+	it('supports escaped multiline', function () {
+		`asdf\
+ghjk`.should.eql('asdfghjk')
+	})
+
+	it('makes substitutions', function () {
+		var x = 'ghjk';
+		`asdf${x}qwer`.should.eql('asdfghjkqwer')
+	})
+
+	it('substitutes expressions', function () {
+		var x = 10;
+		`asdf${Math.pow(x, 3)}qwer`.should.eql('asdf1000qwer')
+	})
+})

@@ -1,6 +1,6 @@
 {
   "name": "latte",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "JavaScript, with a little milk and sugar",
   "main": "index.js",
   "bin": {
@@ -19,14 +19,17 @@
     "coffeescript",
     "syntactic",
     "sugar",
-    "es6"
+    "es6",
+    "compiler"
   ],
   "author": "Sean Micklethwaite",
   "license": "MIT",
   "readmeFilename": "README.md",
-  "gitHead": "cd8b36bb01ea2652fe11ef5a4d448c035d3d2ab9",
   "bugs": {
     "url": "https://github.com/tehsenaus/latte-js/issues"
+  },
+  "engines": {
+    "node": ">=0.8"
   },
   "dependencies": {
     "escodegen": "0.0.26",
@@ -40,7 +43,7 @@
     "grunt": "~0.4.1",
     "mocha": "~1.12.1",
     "should": "~1.2.2",
-    "latte": "~0.1.0",
+    "latte": "~0.2.1",
     "grunt-shell": "~0.3.1",
     "grunt-mocha-test": "~0.6.3",
     "blanket": "~1.1.5"

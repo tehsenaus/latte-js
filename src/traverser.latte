@@ -99,6 +99,10 @@ function traverser(args) {
 						return p;
 					})
 				}
+			case 'MemberExpression':
+				expr.object = me.expr(expr.object);
+				expr.property = me.expr(expr.property);
+				return expr;
 			case 'AssignmentExpression':
 		        expr.right = me.expr(expr.right, {
 		        	assignee: expr.left
@@ -108,6 +112,8 @@ function traverser(args) {
 		    	return me.ident(expr, context);
 		    case 'ThisExpression':
 		    	return me.thisExpr(expr, context);
+		    case 'TemplateLiteral':
+		    	return me.quasiLiteral(expr, context);
 		    case 'Literal':
 		    	break;
 			default:
@@ -130,6 +136,8 @@ function traverser(args) {
 
 	me.ident = x => x;
 	me.thisExpr = x => x;
+
+	me.quasiLiteral = x => { throw new Error('Unhandled quasi literal!') };
 
 	me.super = {};
 
