@@ -5,18 +5,63 @@ var flatten = require("mout/array/flatten"),
 function traverser(args) {
 	var me = {};
 
-	me.funcContext = (parent) => {
-		var temp = 0;
+	me.context = () => {
 		return {
+			scopes: [],
+			blocks: [],
+
+			enterScope: function (node) {
+				var scope = this.enterBlock,
+					temp = 0;
+				scope.temp = function () {
+					return "__t" + temp++;
+				}
+				this.scopes.unshift(scope);
+				return scope;
+			},
+			exitScope: function () {
+				this.scopes.shift();
+				this.exitBlock();
+			},
+			scope: function (node, fn) {
+				this.enterScope(node);
+				try { return fn(this); }
+				finally { this.exitScope(); };
+			},
+
+			enterBlock: function (node) {
+				var block = {
+					node: node
+				}
+				this.blocks.unshift(block);
+				return block;
+			},
+			exitBlock: function () {
+				this.blocks.shift();
+			},
+			block: function (node, fn) {
+				this.enterBlock(node);
+				try { return fn(this); }
+				finally { this.exitBlock(); };
+			},
+
+			isBlockScope: function () {
+				return this.scopes[0] === this.blocks[0];
+			},
+
+			// Allocate a temp in the nearest scope
 			temp: function () {
-				return "__t" + temp++;
+				return this.scopes[0].temp
 			}
 		}
 	}
 
 	me.traverse = (ast) => {
-		ast.body = me.stmts(ast.body);
-		return ast;
+		var context = me.context();
+		return context.scope(ast, context => {
+			ast.body = me.stmts(ast.body, context);
+			return ast;
+		});
 	}
 
 	me.stmts = (stmts, context) => {
@@ -27,47 +72,48 @@ function traverser(args) {
 		if (!stmt) return stmt;
 		switch (stmt.type) {
 			case 'BlockStatement':
-				stmt.body = me.stmts(stmt.body);
-				return stmt;
+				return me.block(stmt, context);
 
 			case 'VariableDeclaration':
-				stmt.declarations = me.decls(stmt.declarations, context);
-				return stmt;
+				return me.varDecl(stmt, context);
 
 			case 'FunctionDeclaration':
-				return me.funcDecl(stmt);
+				return me.funcDecl(stmt, context);
 
 			case 'ExpressionStatement':
-		        stmt.expression = me.expr(stmt.expression);
+		        stmt.expression = me.expr(stmt.expression, context);
 		        return stmt;
 
 		    case 'IfStatement': 
 		    	return {
 		    		type: 'IfStatement',
-		    		test: stmt.test && me.expr(stmt.test),
-		    		consequent: me.stmt(stmt.consequent),
-		    		alternate: stmt.alternate && me.stmt(stmt.alternate)
+		    		test: stmt.test && me.expr(stmt.test, context),
+		    		consequent: me.stmt(stmt.consequent, context),
+		    		alternate: stmt.alternate && me.stmt(stmt.alternate, context)
 		    	}
 
 		    case 'ForStatement': 
 		    	return {
 		    		type: 'ForStatement',
-		    		init: stmt.init && me.stmt(stmt.init),
-		    		test: stmt.test && me.expr(stmt.test),
-		    		update: stmt.update && me.expr(stmt.update),
-		    		body: me.stmt(stmt.body)
+		    		init: stmt.init && me.stmt(stmt.init, context),
+		    		test: stmt.test && me.expr(stmt.test, context),
+		    		update: stmt.update && me.expr(stmt.update, context),
+		    		body: me.stmt(stmt.body, context)
 		    	}
+
+		    case 'ForInStatement':
+		    	return me.forInStmt(stmt, context)
 
 		    case 'WhileStatement':
 		    case 'DoWhileStatement':
-		    	stmt.test = me.expr(stmt.test)
-		    	stmt.body = me.stmt(stmt.body)
+		    	stmt.test = me.expr(stmt.test, context)
+		    	stmt.body = me.stmt(stmt.body, context)
 		    	return stmt
 
 		    case 'SwitchStatement':
-		    	stmt.discriminant = me.expr(stmt.discriminant);
+		    	stmt.discriminant = me.expr(stmt.discriminant, context);
 		    	stmt.cases = stmt.cases.map(c => {
-		    		c.consequent = me.stmts(c.consequent);
+		    		c.consequent = me.stmts(c.consequent, context);
 		    		return c;
 		    	})
 		    	return stmt;
@@ -76,18 +122,45 @@ function traverser(args) {
 		    case 'ThrowStatement':
 		    	return {
 		    		type: stmt.type,
-		    		argument: me.expr(stmt.argument)
+		    		argument: me.expr(stmt.argument, context)
 		    	}
+
+		    case 'TryStatement':
+		    	stmt.block = me.stmt(stmt.block, context);
+		    	stmt.handlers.forEach(handler => {
+		    		handler.body = me.stmt(handler.body, context)
+		    	})
+		    	stmt.finalizer = stmt.finalizer && me.stmt(stmt.finalizer, context);
+		    	return stmt;
+
+		    case 'BreakStatement':
+		    	break;
 
 		    case undefined:
 		    	throw new Error("Fatal: Stmt type is undefined! In: " + util.inspect(stmt));
 
 			default:
 				console.log("Unhandled stmt: ", stmt.type);
-				return stmt;
 		}
+		return stmt;
 	}
 
+	me.block = (stmt, context) => {
+		return context.block(stmt, context => {
+			stmt.body = me.stmts(stmt.body, context);
+			return stmt;
+		});
+	}
+
+	me.forInStmt = (stmt, context) => {
+		stmt.body = me.stmt(stmt.body, context)
+		return stmt;
+	}
+	
+	me.varDecl = (stmt, context) => {
+		stmt.declarations = me.decls(stmt.declarations, context);
+		return stmt;
+	}
 	me.decls = (decls, context) => {
 		return flatten(decls.map(d => me.decl(d, context)));
 	}
@@ -95,8 +168,8 @@ function traverser(args) {
 		decl.init = me.expr(decl.init, context);
 		return decl;
 	}
-	me.funcDecl = (fn) => {
-		return me.func(fn);
+	me.funcDecl = (fn, context) => {
+		return me.func(fn, context);
 	}
 	me.expr = (expr, context) => {
 		if (!expr) return expr;
@@ -116,9 +189,7 @@ function traverser(args) {
 				return {
 					type: 'ObjectExpression',
 					properties: expr.properties.map(p => {
-						p.value = me.expr(p.value, {
-							lexicalThis: context && context.assignee
-						});
+						p.value = me.expr(p.value, context);
 						return p;
 					})
 				}
@@ -126,18 +197,16 @@ function traverser(args) {
 				expr.elements = expr.elements.map(e => me.expr(e, context))
 				return expr;
 			case 'MemberExpression':
-				expr.object = me.expr(expr.object);
-				expr.property = me.expr(expr.property);
+				expr.object = me.expr(expr.object, context);
+				expr.property = me.expr(expr.property, context);
 				return expr;
 			case 'AssignmentExpression':
-		        expr.right = me.expr(expr.right, {
-		        	assignee: expr.left
-		        });
+		        expr.right = me.expr(expr.right, context);
 		        return expr;
 		    case 'ConditionalExpression':
-		    	expr.test = me.expr(expr.test)
-		    	expr.consequent = me.expr(expr.consequent)
-		    	expr.alternate = me.expr(expr.alternate)
+		    	expr.test = me.expr(expr.test, context)
+		    	expr.consequent = me.expr(expr.consequent, context)
+		    	expr.alternate = me.expr(expr.alternate, context)
 		    	return expr;
 		    case 'BinaryExpression':
 		    case 'LogicalExpression':
@@ -146,7 +215,7 @@ function traverser(args) {
 		    	return expr;
 		    case 'UnaryExpression':
 		    case 'UpdateExpression':
-		    	expr.argument = me.expr(expr.argument)
+		    	expr.argument = me.expr(expr.argument, context)
 		    	return expr;
 		    case 'Identifier':
 		    	return me.ident(expr, context);
@@ -162,18 +231,18 @@ function traverser(args) {
 		return expr;
 	}
 	
-	me.arrowFuncExpr = (fn) => {
+	me.arrowFuncExpr = (fn, context) => {
 		fn.body = fn.body.type == 'BlockStatement'
-			? me.stmt(fn.body) : me.expr(fn.body);
+			? me.stmt(fn.body, context) : me.expr(fn.body, context);
 		return fn;
 	};
 
-	me.funcExpr = (fn) => {
-		return me.func(fn);
+	me.funcExpr = (fn, context) => {
+		return me.func(fn, context);
 	}
 
-	me.func = (fn) => {
-		fn.body.body = me.stmts(fn.body.body);
+	me.func = (fn, context) => {
+		fn.body.body = me.stmts(fn.body.body, context);
 
 		return fn;
 	}

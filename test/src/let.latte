@@ -1,0 +1,39 @@
+
+var should = require("should");
+
+describe('Let Statement', function () {
+
+	it('defines variables in block scope', function (done) {
+		var a = [10, 20],
+			r = 0;
+		
+		for ( var i in a ) {
+			let x = a[i];
+			process.nextTick(function () {
+				r += x;
+			})
+		}
+
+		process.nextTick(function () {
+			r.should.equal(30);
+			done();
+		})
+	})
+
+	it('works with for (in)', function (done) {
+		var a = [10, 20],
+			r = 0;
+		
+		for ( let i in a ) {
+			process.nextTick(function () {
+				r += a[i];
+			})
+		}
+
+		process.nextTick(function () {
+			r.should.equal(30);
+			done();
+		})
+	})
+
+})

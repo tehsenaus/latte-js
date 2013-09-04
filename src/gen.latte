@@ -1,6 +1,32 @@
 
 module.exports = {
 
+	closure: function (stmts, params) {
+		params = params || [];
+		return {
+            "type": "CallExpression",
+            "callee": this.fn(stmts, params),
+            "arguments": params.map(p => this.ident(p))
+        }
+	},
+	keys: function (x) {
+		return this.call(
+			this.member('Object', 'keys'), [x]
+		)
+	},
+	forEach: function (arr, stmts, itemId) {
+		return {
+            "type": "ExpressionStatement",
+            "expression": this.call(
+            	this.member(arr, 'forEach'),
+            	[ this.fn(stmts, [itemId]) ]
+            )
+        }
+	},
+	forEachKey: function (x, stmts, itemId) {
+		return this.forEach(this.keys(x), stmts, itemId);
+	},
+
 	block: function (stmts) {
 		return {
 			type: "BlockStatement",
@@ -11,22 +37,51 @@ module.exports = {
 	decl: function (id, init) {
 		return {
 	        "type": "VariableDeclarator",
-	        "id": typeof id === 'string' ? {
-	            "type": "Identifier",
-	            "name": id
-	        } : id,
+	        "id": this.ident(id),
 	        "init": init
 	    }
 	},
 
 
+	fn: function (stmts, params) {
+		return {
+            "type": "FunctionExpression",
+            "id": null,
+            "params": params.map(p => this.ident(p)),
+            "defaults": [],
+            "body": {
+                "type": "BlockStatement",
+                "body": stmts
+            },
+            "rest": null,
+            "generator": false,
+            "expression": false
+        }
+	},
+	call: function (callee, args) {
+		return {
+            "type": "CallExpression",
+            "callee": callee,
+            "arguments": args
+        }
+	},
+
 	member: function (obj, property, options) {
 		return {
             "type": "MemberExpression",
             "computed": options && options.computed,
-            "object": obj,
-            "property": typeof property == "object" ? property : this.val(property)
+            "object": typeof obj == "object" ? obj : this.ident(obj),
+            "property": typeof property == "object" ? property : (
+            	options && options.computed ? this.val(property) : this.ident(property)
+            )
         }
+	},
+
+	ident: function (id) {
+		return typeof id === 'string' ? {
+            "type": "Identifier",
+            "name": id
+        } : id;
 	},
 
 	lit: function (raw, value) {

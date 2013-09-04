@@ -19,18 +19,18 @@ var replaceThisTransformer = traverser({
 });
 
 var arrowTransformer = traverser({
-	arrowFuncExpr: (fn) => {
+	arrowFuncExpr: (fn, context) => {
 		return arrowTransformer.funcExpr({
 			"type": "FunctionExpression",
 	        "id": null,
 	        "params": fn.params,
 	        "defaults": [],
-	        "body": fn.body.type == 'BlockStatement' ? replaceThisTransformer.stmt(fn.body) : {
+	        "body": fn.body.type == 'BlockStatement' ? replaceThisTransformer.stmt(fn.body, context) : {
 	            "type": "BlockStatement",
 	            "body": [
 	                {
 	                    "type": "ReturnStatement",
-	                    "argument": replaceThisTransformer.expr(fn.body)
+	                    "argument": replaceThisTransformer.expr(fn.body, context)
 	                }
 	            ]
 	        },
@@ -38,7 +38,7 @@ var arrowTransformer = traverser({
 	        "generator": false,
 	        "expression": false,
 	        noScope: true
-		})
+		}, context)
 	}
 })
 
@@ -111,6 +111,53 @@ var arrayDestructuringTransformer = traverser({
 })
 
 
+var letTransformer = traverser({
+	varDecl: function (d, context) {
+		d = this.super.varDecl(d, context);
+
+		if ( d.kind == 'let' ) {
+			d.kind = 'var';
+			context.blocks[0].node.requiresBlockScope = true;
+		}
+
+		return d;
+	},
+
+	forInStmt: function (stmt, context) {
+		if ( stmt.left.type == 'VariableDeclaration' && stmt.left.kind == 'let' ) {
+			var body = stmt.body;
+			if ( body.type !== 'BlockStatement' ) {
+				body = stmt.body = gen.block([ body ]);
+			}
+
+			// stmt.left.kind = 'var';
+			// body.requiresBlockScope = true;
+			// body.blockScopeParams = stmt.left.declarations.map(d => d.id);
+
+			// Change to Object.keys.forEach
+			return this.stmt(gen.forEachKey(
+				stmt.right,
+				body.body,
+				stmt.left.declarations[0].id
+			), context)
+		}
+
+		return this.super.forInStmt(stmt, context);
+	},
+	block: function (b, context) {
+		var block = this.super.block(b, context);
+
+		if ( b.requiresBlockScope ) {
+			b.body = [ {
+            	"type": "ExpressionStatement",
+            	"expression": gen.closure(b.body, b.blockScopeParams) 
+           	}]
+		}
+
+		return b;
+	}
+});
+
 
 var 
 LEXICAL_THIS = '__this',
@@ -127,6 +174,7 @@ var transformers = [
 	quasiTransformer,
 	arrowTransformer,
 	arrayDestructuringTransformer,
+	letTransformer,
 	insertLexicalThisTransformer
 ]
 
