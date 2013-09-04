@@ -159,6 +159,59 @@ var letTransformer = traverser({
 });
 
 
+var comprehensionTransformer = traverser({
+	comprehension: function (c, context) {
+		var body = {
+            "type": "ExpressionStatement",
+            "expression": gen.call(
+				gen.member('__comp', 'push'), [
+					c.body
+				]
+			)
+        };
+
+        if ( c.filter ) {
+        	body = {
+	            "type": "IfStatement",
+	            "test": c.filter,
+	            "consequent": body
+	        }
+        }
+
+        c.blocks.reverse().forEach(b => {
+        	body = {
+	            "type": "ForInStatement",
+	            "left": {
+	                "type": "VariableDeclaration",
+	                "declarations": [
+	                    {
+	                        "type": "VariableDeclarator",
+	                        "id": b.left,
+	                        "init": null
+	                    }
+	                ],
+	                "kind": "var"
+	            },
+	            "right": b.right,
+	            "body": body,
+	            "each": false
+	        }
+        });
+
+		return this.expr(gen.closure([
+			gen.varDecl('__comp', {
+                "type": "ArrayExpression",
+                "elements": []
+            }),
+			body,
+			{
+                "type": "ReturnStatement",
+                "argument": gen.ident('__comp')
+            }
+		]));
+	}
+});
+
 var 
 LEXICAL_THIS = '__this',
 SET_LEXICAL_THIS = {
@@ -172,6 +225,7 @@ SET_LEXICAL_THIS = {
 
 var transformers = [
 	quasiTransformer,
+	comprehensionTransformer,
 	arrowTransformer,
 	arrayDestructuringTransformer,
 	letTransformer,

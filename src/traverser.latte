@@ -156,7 +156,7 @@ function traverser(args) {
 		stmt.body = me.stmt(stmt.body, context)
 		return stmt;
 	}
-	
+
 	me.varDecl = (stmt, context) => {
 		stmt.declarations = me.decls(stmt.declarations, context);
 		return stmt;
@@ -196,6 +196,8 @@ function traverser(args) {
 			case 'ArrayExpression':
 				expr.elements = expr.elements.map(e => me.expr(e, context))
 				return expr;
+			case 'ComprehensionExpression':
+				return me.comprehension(expr, context);
 			case 'MemberExpression':
 				expr.object = me.expr(expr.object, context);
 				expr.property = me.expr(expr.property, context);
@@ -245,6 +247,15 @@ function traverser(args) {
 		fn.body.body = me.stmts(fn.body.body, context);
 
 		return fn;
+	}
+
+	me.comprehension = (c, context) => {
+		c.filter = c.filter && me.expr(c.filter)
+		c.blocks.forEach(b => {
+			b.right = me.expr(b.right)
+		})
+		c.body = me.expr(c.body)
+		return c;
 	}
 
 	me.ident = x => x;

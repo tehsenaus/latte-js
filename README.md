@@ -75,3 +75,33 @@ I'm multiline!`
 > `The answer is: ${ Math.pow(x,y) }`
 'The answer is: 1000'
 ```
+
+#### Array Comprehensions
+```
+> var s = "Hello world!";
+undefined
+> [s[i].charCodeAt(0) for (i in s)]
+[ 72,
+  101,
+  108,
+  108,
+  111,
+  32,
+  119,
+  111,
+  114,
+  108,
+  100,
+  33 ]
+```
+
+#### Let (block level variables)
+```
+let x = 'something';
+```
+
+```
+for (let i in [...]) {
+	...
+}
+```

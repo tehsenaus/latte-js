@@ -34,6 +34,13 @@ module.exports = {
 		}
 	},
 
+	varDecl: function (id, init, options) {
+		return {
+            "type": "VariableDeclaration",
+            "declarations": [ this.decl(id, init) ],
+		    "kind": (options && options.kind) || 'var'
+	    }
+	},
 	decl: function (id, init) {
 		return {
 	        "type": "VariableDeclarator",
