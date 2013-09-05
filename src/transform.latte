@@ -160,41 +160,49 @@ var letTransformer = traverser({
 
 var comprehensionTransformer = traverser({
 	comprehension: function (c, context) {
-		var body = {
+		var body = gen.block([{
             "type": "ExpressionStatement",
             "expression": gen.call(
 				gen.member('__comp', 'push'), [
 					c.body
 				]
 			)
-        };
+        }]);
 
         if ( c.filter ) {
-        	body = {
+        	body = gen.block([{
 	            "type": "IfStatement",
 	            "test": c.filter,
 	            "consequent": body
-	        }
+	        }])
         }
 
         c.blocks.reverse().forEach(b => {
-        	body = {
-	            "type": "ForInStatement",
-	            "left": {
-	                "type": "VariableDeclaration",
-	                "declarations": [
-	                    {
-	                        "type": "VariableDeclarator",
-	                        "id": b.left,
-	                        "init": null
-	                    }
-	                ],
-	                "kind": "var"
-	            },
-	            "right": b.right,
-	            "body": body,
-	            "each": false
-	        }
+        	if ( b.type == 'ComprehensionBlock' ) {
+	        	body = gen.block([{
+		            "type": "ForInStatement",
+		            "left": {
+		                "type": "VariableDeclaration",
+		                "declarations": [
+		                    {
+		                        "type": "VariableDeclarator",
+		                        "id": b.left,
+		                        "init": null
+		                    }
+		                ],
+		                "kind": "var"
+		            },
+		            "right": b.right,
+		            "body": body,
+		            "each": false
+		        }])
+		    } else { // Var
+		    	body.body.unshift(
+		    		// This is all wrapped up in a closure, so we can safely
+		    		// use a vanilla 'var' decl here.
+		    		gen.varDecl(b.left, b.right)
+		    	)
+		    }
         });
 
 		return this.expr(gen.closure([
@@ -202,12 +210,12 @@ var comprehensionTransformer = traverser({
                 "type": "ArrayExpression",
                 "elements": []
             }),
-			body,
+		].concat(body.body).concat([
 			{
                 "type": "ReturnStatement",
                 "argument": gen.ident('__comp')
             }
-		]));
+		])), context);
 	}
 });
 

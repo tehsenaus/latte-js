@@ -11,8 +11,9 @@ describe('Array Comprehension', function () {
         (function () {
             var __this = this;
             var __comp = [];
-            for (var i in a)
+            for (var i in a) {
                 __comp.push(a[i]);
+            }
             return __comp;
         }().should.eql(a));
     });
@@ -28,9 +29,11 @@ describe('Array Comprehension', function () {
         (function () {
             var __this = this;
             var __comp = [];
-            for (var i in a)
-                for (var j in b)
+            for (var i in a) {
+                for (var j in b) {
                     __comp.push(a[i] + b[j]);
+                }
+            }
             return __comp;
         }().should.eql([
             11,
@@ -52,9 +55,11 @@ describe('Array Comprehension', function () {
         var evens = function () {
                 var __this = this;
                 var __comp = [];
-                for (var i in a)
-                    if (a[i] % 2 == 0)
+                for (var i in a) {
+                    if (a[i] % 2 == 0) {
                         __comp.push(a[i]);
+                    }
+                }
                 return __comp;
             }();
         evens.should.eql([
