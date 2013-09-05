@@ -1,6 +1,6 @@
 {
   "name": "latte",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "JavaScript, with a little milk and sugar",
   "main": "index.js",
   "bin": {

@@ -15,13 +15,6 @@ describe('Array Comprehension', function () {
                 __comp.push(a[i]);
             return __comp;
         }().should.eql(a));
-        (function () {
-            var __this = this;
-            var __comp = [];
-            for (var c in 'Hello world!')
-                __comp.push(c.charCodeAt(0));
-            return __comp;
-        }());
     });
     it('enumerates two arrays', function () {
         var __this = this;

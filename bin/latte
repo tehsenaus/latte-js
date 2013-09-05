@@ -36,7 +36,11 @@ var compilerOptions = {
 };
 
 if ( !files.length ) {
-	return require('../lib/repl')();
+	if ( process.stdin.isTTY )  {
+		return require('../lib/repl')();
+	} else {
+		return process.stdin.pipe(compiler(compilerOptions)).pipe(process.stdout);
+	}
 }
 
 
@@ -56,26 +60,21 @@ if ( files[0][files[0].length-1] == '/' ) {
 
 } else {
 
+	// Run in-process
+	process.argv = process.argv.slice(1);
 
+	var file = files[0];
+	var input = fs.readFileSync(file, 'utf8');
 
-}
+	if ( input.lastIndexOf('#!', 0) === 0 ) {
+		input = input.slice(input.indexOf('\n'));
+	}
 
+	var output = compiler.compile(input, compilerOptions);
 
+	var mainModule = require.main;
 
-
-if ( argv.c ) {
-
-	
-	mkdirp.sync(out);
-
-	compiled.forEach(function (file) { 
-		var dst = file.path.replace('.latte', '.js');
-
-		fs.writeFileSync(path.join(out, dst), file.output, 'utf8')
-	})
-
-} else {
-	// Run the source
-	require.main._compile(compiled[0].output)
+	mainModule.paths = require('module')._nodeModulePaths(file);
+	mainModule._compile(output)
 
 }

@@ -20,6 +20,12 @@ function compiler(options) {
 		return output;
 	}
 	var stream = es.map(function (data, callback) {
+		if (data == compiler.EOF) {
+			// reset
+			buf = [];
+			return callback();
+		}
+
 		buf.push(data);
 
 		if ( interactive || ending ) {
@@ -27,7 +33,7 @@ function compiler(options) {
 				callback(null, compileBuffered());
 			} catch (e) {
 				// Wait for more data
-				if ( !interactive ) {
+				if ( !interactive && options.debug ) {
 					console.error(e.stack);
 				}
 				callback(interactive ? null : e);
@@ -47,6 +53,7 @@ function compiler(options) {
 	return stream;
 }
 module.exports = compiler;
+compiler.EOF = '\u0003';
 
 compiler.files = function (options) {
 	var inputDir = path.join(process.cwd(), options.inputDir),
@@ -69,7 +76,7 @@ compiler.files = function (options) {
 				cb(null);
 			});
 			compiler.on('error', function (e) {
-				cb(e);
+				cb(file + ': ' + e);
 			});
 
 			compiler.pipe(fs.createWriteStream(

@@ -158,7 +158,6 @@ var letTransformer = traverser({
 	}
 });
 
-
 var comprehensionTransformer = traverser({
 	comprehension: function (c, context) {
 		var body = {
@@ -212,6 +211,24 @@ var comprehensionTransformer = traverser({
 	}
 });
 
+
+var forFilterTransformer = traverser({
+
+	forInStmt: function (stmt, context) {
+		if ( stmt.filter ) {
+			stmt.body = gen.block([ {
+	            "type": "IfStatement",
+	            "test": stmt.filter,
+	            "consequent": stmt.body
+	        } ])
+	        stmt.filter = null;
+		}
+
+		return this.super.forInStmt(stmt, context);
+	}
+});
+
+
 var 
 LEXICAL_THIS = '__this',
 SET_LEXICAL_THIS = {
@@ -228,6 +245,7 @@ var transformers = [
 	comprehensionTransformer,
 	arrowTransformer,
 	arrayDestructuringTransformer,
+	forFilterTransformer,
 	letTransformer,
 	insertLexicalThisTransformer
 ]
