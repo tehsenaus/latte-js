@@ -11,7 +11,7 @@ function traverser(args) {
 			blocks: [],
 
 			enterScope: function (node) {
-				var scope = this.enterBlock,
+				var scope = this.enterBlock(node),
 					temp = 0;
 				scope.temp = function () {
 					return "__t" + temp++;
@@ -219,6 +219,8 @@ function traverser(args) {
 		    case 'UpdateExpression':
 		    	expr.argument = me.expr(expr.argument, context)
 		    	return expr;
+		    case 'MonadExpression':
+		    	return me.monad(expr, context);
 		    case 'Identifier':
 		    	return me.ident(expr, context);
 		    case 'ThisExpression':
@@ -244,9 +246,12 @@ function traverser(args) {
 	}
 
 	me.func = (fn, context) => {
-		fn.body.body = me.stmts(fn.body.body, context);
+		var doIt = context => {
+			fn.body.body = me.stmts(fn.body.body, context);
+			return fn;
+		}
 
-		return fn;
+		return fn.noScope ? doIt(context) : context.scope(fn, doIt);
 	}
 
 	me.comprehension = (c, context) => {
@@ -256,6 +261,11 @@ function traverser(args) {
 		})
 		c.body = me.expr(c.body)
 		return c;
+	}
+
+	me.monad = (m, context) => {
+		m.body = me.stmt(m.body, context);
+		return m;
 	}
 
 	me.ident = x => x;

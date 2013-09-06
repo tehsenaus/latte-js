@@ -1,6 +1,19 @@
 
 module.exports = {
 
+	arrow: function (params, body) {
+		return {
+            "type": "ArrowFunctionExpression",
+            "id": null,
+            "params": params.map(p => this.ident(p)),
+            "defaults": [],
+            "body": body,
+            "rest": null,
+            "generator": false,
+            "expression": true
+        }
+	},
+
 	closure: function (stmts, params) {
 		params = params || [];
 		return {
@@ -68,9 +81,22 @@ module.exports = {
 	call: function (callee, args) {
 		return {
             "type": "CallExpression",
-            "callee": callee,
-            "arguments": args
+            "callee": this.ident(callee),
+            "arguments": args.map(a => this.ident(a))
         }
+	},
+	ret: function (arg) {
+		return {
+    		type: "ReturnStatement",
+    		argument: this.ident(arg)
+    	}
+	},
+
+	exprStmt: function (e) {
+		return e.type == 'ExpressionStatement' ? e : {
+			type: 'ExpressionStatement',
+			expression: e
+		}
 	},
 
 	member: function (obj, property, options) {

@@ -1,15 +1,11 @@
-var __this = this;
 var should = require('should');
 describe('Array Comprehension', function () {
-    var __this = this;
     it('enumerates an array', function () {
-        var __this = this;
         var a = [
                 10,
                 20
             ];
         (function () {
-            var __this = this;
             var __comp = [];
             for (var i in a) {
                 __comp.push(a[i]);
@@ -18,7 +14,6 @@ describe('Array Comprehension', function () {
         }().should.eql(a));
     });
     it('enumerates two arrays', function () {
-        var __this = this;
         var a = [
                 10,
                 20
@@ -27,7 +22,6 @@ describe('Array Comprehension', function () {
                 2
             ];
         (function () {
-            var __this = this;
             var __comp = [];
             for (var i in a) {
                 for (var j in b) {
@@ -43,7 +37,6 @@ describe('Array Comprehension', function () {
         ]));
     });
     it('filters an array', function () {
-        var __this = this;
         var a = [
                 1,
                 2,
@@ -53,7 +46,6 @@ describe('Array Comprehension', function () {
                 6
             ];
         var evens = function () {
-                var __this = this;
                 var __comp = [];
                 for (var i in a) {
                     if (a[i] % 2 == 0) {

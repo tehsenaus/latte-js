@@ -3,14 +3,25 @@ var traverser = require("./traverser"),
 	gen = require("./gen");
 
 var insertLexicalThisTransformer = traverser({
+	traverse: function (ast) {
+		ast = this.super.traverse(ast);
+		if ( ast.requiresLexicalThis ) {
+			ast.body.splice(0,0, SET_LEXICAL_THIS);
+		}
+		return ast;
+	},
+
 	func: (fn, context) => {
-		if (!fn.noScope) fn.body.body.splice(0, 0, SET_LEXICAL_THIS);
+		if (!fn.noScope && fn.requiresLexicalThis) {
+			fn.body.body.splice(0, 0, SET_LEXICAL_THIS);
+		}
 		return insertLexicalThisTransformer.super.func(fn, context);
 	}
 })
 var replaceThisTransformer = traverser({
 	func: fn => fn,
-	thisExpr: (ident, context) => {
+	thisExpr: function (ident, context) {
+		this.replacedThis = true;
 		return {
 			type: 'Identifier',
 			name: context && context.lexicalThis || LEXICAL_THIS
@@ -20,7 +31,10 @@ var replaceThisTransformer = traverser({
 
 var arrowTransformer = traverser({
 	arrowFuncExpr: (fn, context) => {
-		return arrowTransformer.funcExpr({
+		
+		replaceThisTransformer.replacedThis = false;
+
+		fn = {
 			"type": "FunctionExpression",
 	        "id": null,
 	        "params": fn.params,
@@ -38,7 +52,13 @@ var arrowTransformer = traverser({
 	        "generator": false,
 	        "expression": false,
 	        noScope: true
-		}, context)
+		};
+
+		if ( replaceThisTransformer.replacedThis ) {
+			context.scopes[0].node.requiresLexicalThis = true;
+		}
+
+		return arrowTransformer.funcExpr(fn, context);
 	}
 })
 
@@ -236,6 +256,82 @@ var forFilterTransformer = traverser({
 	}
 });
 
+var monadTransformer = traverser({
+	monad: function (m, context) {
+		m = this.super.monad(m, context);
+
+		var stmts = m.body.type == 'BlockStatement'
+			? m.body.body.reverse() : [m.body];
+
+		var body = stmts[0],
+			nextBody = [];
+
+		if ( body.type == 'ExpressionStatement' ) {
+			body = gen.ret(body.expression);
+		}
+
+		stmts.slice(1).forEach(s => {
+			if ( s.type == 'VariableDeclaration' ) {
+				s.declarations.forEach(d => {
+					body = gen.ret( gen.call('__b', [
+						d.init, gen.arrow([d.id],
+							nextBody.length == 0 && body.type.indexOf('Expression') > 0
+								? body : gen.block(
+									nextBody.reverse().concat([ body ])
+								)
+						)
+					]) );
+					nextBody = [];
+				})
+			} else {
+				nextBody.push(s);
+			}
+		});
+
+		//console.log(body);
+
+		return gen.closure([
+			MONAD_BIND,
+			body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
+		])
+	}
+})
+var MONAD_BIND = gen.varDecl('__b', {
+    "type": "ArrowFunctionExpression",
+    "id": null,
+    "params": [
+        {
+            "type": "Identifier",
+            "name": "v"
+        },
+        {
+            "type": "Identifier",
+            "name": "n"
+        }
+    ],
+    "defaults": [],
+    "body": {
+        "type": "ConditionalExpression",
+        "test": {
+            "type": "BinaryExpression",
+            "operator": "==",
+            "left": {
+                "type": "UnaryExpression",
+                "operator": "typeof",
+                "argument": gen.member('v', 'then')
+            },
+            "right": gen.val("function")
+        },
+        "consequent": gen.call(
+        	gen.member('v', 'then'),
+        	[ "n" ]
+        ),
+        "alternate": gen.call("n", ["v"])
+    },
+    "rest": null,
+    "generator": false,
+    "expression": true
+})
 
 var 
 LEXICAL_THIS = '__this',
@@ -250,6 +346,7 @@ SET_LEXICAL_THIS = {
 
 var transformers = [
 	quasiTransformer,
+	monadTransformer,
 	comprehensionTransformer,
 	arrowTransformer,
 	arrayDestructuringTransformer,
@@ -261,8 +358,6 @@ var transformers = [
 module.exports = function (ast) {
 
 	ast = transformers.reduce((ast, t) => t.traverse(ast), ast);
-
-	ast.body.splice(0,0, SET_LEXICAL_THIS);
 
 	return ast;
 };
