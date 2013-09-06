@@ -61,6 +61,9 @@ if ( files[0][files[0].length-1] == '/' ) {
 } else {
 
 	// Run in-process
+	// Follow example of CoffeeScript:
+	// http://coffeescript.org/documentation/docs/coffee-script.html#section-9
+	
 	process.argv = process.argv.slice(1);
 
 	var file = files[0];
@@ -74,7 +77,8 @@ if ( files[0][files[0].length-1] == '/' ) {
 
 	var mainModule = require.main;
 
+	mainModule.filename = fs.realpathSync(file);
 	mainModule.paths = require('module')._nodeModulePaths(file);
-	mainModule._compile(output)
 
+	mainModule._compile(output, mainModule.filename)
 }
