@@ -236,6 +236,22 @@ var forFilterTransformer = traverser({
 	}
 });
 
+var existentialTransformer = traverser({
+	member: function (m, context) {
+		m = this.super.member(m, context);
+
+		if ( m.existential ) {
+			m = {
+                "type": "LogicalExpression",
+                "operator": "&&",
+                "left": m.object,
+                "right": m
+            }
+		}
+
+		return m;
+	}
+});
 
 var 
 LEXICAL_THIS = '__this',
@@ -255,7 +271,8 @@ var transformers = [
 	arrayDestructuringTransformer,
 	forFilterTransformer,
 	letTransformer,
-	insertLexicalThisTransformer
+	insertLexicalThisTransformer,
+	existentialTransformer
 ]
 
 module.exports = function (ast) {

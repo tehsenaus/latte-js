@@ -199,9 +199,7 @@ function traverser(args) {
 			case 'ComprehensionExpression':
 				return me.comprehension(expr, context);
 			case 'MemberExpression':
-				expr.object = me.expr(expr.object, context);
-				expr.property = me.expr(expr.property, context);
-				return expr;
+				return me.member(expr, context);
 			case 'AssignmentExpression':
 		        expr.right = me.expr(expr.right, context);
 		        return expr;
@@ -247,6 +245,12 @@ function traverser(args) {
 		fn.body.body = me.stmts(fn.body.body, context);
 
 		return fn;
+	}
+
+	me.member = (expr, context) => {
+		expr.object = me.expr(expr.object, context);
+		expr.property = me.expr(expr.property, context);
+		return expr;
 	}
 
 	me.comprehension = (c, context) => {
