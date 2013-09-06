@@ -80,5 +80,9 @@ if ( files[0][files[0].length-1] == '/' ) {
 	mainModule.filename = fs.realpathSync(file);
 	mainModule.paths = require('module')._nodeModulePaths(file);
 
+	Object.keys(require.cache).forEach(function (k) {
+		delete require.cache[k];
+	});
+	
 	mainModule._compile(output, mainModule.filename)
 }
