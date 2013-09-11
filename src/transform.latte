@@ -256,47 +256,162 @@ var forFilterTransformer = traverser({
 	}
 });
 
+
+
+
+
+
+
+var hasBindsTraverser = traverser({
+	exprHasBinds: function (expr) {
+		var context = this.context();
+		this.expr(expr, context);
+		return context.hasBinds;
+	},
+
+	unary: function (expr, context) {
+		if ( expr.operator === "<<" ) {
+			context.hasBinds = true;
+		}
+		return this.super.unary(expr, context);
+	}
+});
+
+
+function exprHasBinds(expr) {
+	return hasBindsTraverser.exprHasBinds(expr);
+}
+function genBind(expr) {
+	return {
+		type: 'UnaryExpression', operator: '<<',
+		argument: expr
+	}
+}
+function genMonadExpr(expr) {
+	return {
+		type: 'MonadExpression',
+		body: gen.block( gen.ret(expr) )
+	}
+}
+
 var monadTransformer = traverser({
-	monad: function (m, context) {
-		m = this.super.monad(m, context);
+	_bind: function (expr, context) {
+		context.stmt.hasBinds = true;
+		
+		var oldIsInBind = context.isInBind;
+		context.isInBind = true
 
-		var stmts = m.body.type == 'BlockStatement'
-			? m.body.body.reverse() : [m.body];
+		var bound = context.monad.bind(this.expr(expr, context));
 
-		var body = stmts[0],
-			nextBody = [];
+		context.isInBind = oldIsInBind;
+		return bound;
+	},
 
-		if ( body.type == 'ExpressionStatement' ) {
-			body = gen.ret(body.expression);
+	unary: function (expr, context) {
+		if ( expr.operator === "<<" ) {
+			if (!context.monad) {
+				throw new Error('Unexpected "<<": not in monad block!');
+			}
+
+			return this._bind(expr.argument, context);
+		}
+		return this.super.unary(expr, context);
+	},
+
+	binary: function (expr, context) {
+		// Support short circuit evaluation
+		if ( !context.isInBind && expr.type === 'LogicalExpression') {
+			var bHasBinds = exprHasBinds(expr.right);
+
+			if ( bHasBinds ) {
+				expr.right = genMonadExpr(expr.right);
+				return this.expr(genBind(expr), context)
+			}
 		}
 
-		stmts.slice(1).forEach(s => {
-			if ( s.type == 'VariableDeclaration' ) {
-				s.declarations.forEach(d => {
-					body = gen.ret( gen.call('__b', [
-						d.init, gen.arrow([d.id],
-							nextBody.length == 0 && body.type.indexOf('Expression') > 0
-								? body : gen.block(
-									nextBody.reverse().concat([ body ])
-								)
-						)
-					]) );
-					nextBody = [];
-				})
-			} else {
-				nextBody.push(s);
-			}
-		});
+		return this.super.binary(expr, context);
+	},
 
-		//console.log(body);
+	conditional: function (expr, context) {
+		if ( !context.isInBind ) {
+			var aHasBinds = exprHasBinds(expr.consequent)
+				bHasBinds = exprHasBinds(expr.alternate);
+
+			if ( aHasBinds || bHasBinds ) {
+
+				if ( aHasBinds ) expr.consequent = genMonadExpr(expr.consequent);
+				if ( bHasBinds ) expr.alternate = genMonadExpr(expr.alternate);
+
+				return this.expr(genBind(expr), context)
+			}
+		}
+
+		return this.super.conditional(expr, context);
+	},
+
+	stmt: function (stmt, context) {
+		var oldStmt = context.stmt;
+		context.stmt = {};
+
+		stmt = this.super.stmt(stmt, context);
+
+		if ( context.monad ) {
+			if ( context.stmt.hasBinds ) {
+
+			} else if ( stmt.type != 'BlockStatement' ) {
+				context.monad.stmt(stmt);
+				stmt = {
+		            "type": "EmptyStatement"
+		        };
+			}
+		}
+
+		context.stmt = oldStmt;
+		return stmt;
+	},
+
+	monad: function (m, context) {
+		var lastMonad = context.monad;
+		var binds = [], stmts = [];
+		var monad = context.monad = {
+			bind: (expr) => {
+				var t = context.temp();
+				binds.push({
+					t: t,
+					expr: expr,
+					stmts: stmts
+				});
+				stmts = [];
+				return gen.ident(t);
+			},
+			stmt: stmt => stmts.push(stmt)
+		}
+
+
+		// Traverse to get all binds
+		m = this.super.monad(m, context);
+		console.log(m);
+
+		var body = binds.reduceRight(
+			(s, b) => (console.log(s), gen.block(b.stmts.concat([
+				gen.ret( gen.call(MONAD_BIND, [
+					b.expr, gen.arrow([b.t], s)
+				]) )
+			]))),
+			
+			gen.block((m.body.body || []).concat(stmts))
+		)
+
+		context.monad = lastMonad;
 
 		return gen.closure([
-			MONAD_BIND,
+			MONAD_BIND_FN,
 			body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
 		])
 	}
 })
-var MONAD_BIND = gen.varDecl('__b', {
+var MONAD_BIND = '__b';
+var MONAD_BIND_FN = gen.varDecl(MONAD_BIND, {
     "type": "ArrowFunctionExpression",
     "id": null,
     "params": [

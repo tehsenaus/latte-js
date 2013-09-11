@@ -41,10 +41,10 @@ module.exports = {
 	},
 
 	block: function (stmts) {
-		return {
+		return stmts instanceof Array ? {
 			type: "BlockStatement",
 			body: stmts
-		}
+		} : (stmts.type == 'BlockStatement' ? stmts : this.block([stmts]))
 	},
 
 	varDecl: function (id, init, options) {
@@ -69,10 +69,7 @@ module.exports = {
             "id": null,
             "params": params.map(p => this.ident(p)),
             "defaults": [],
-            "body": {
-                "type": "BlockStatement",
-                "body": stmts
-            },
+            "body": this.block(stmts),
             "rest": null,
             "generator": false,
             "expression": false

@@ -51,13 +51,14 @@ function traverser(args) {
 
 			// Allocate a temp in the nearest scope
 			temp: function () {
-				return this.scopes[0].temp
+				return this.scopes[0].temp();
 			}
 		}
 	}
 
 	me.traverse = (ast) => {
 		var context = me.context();
+		context.ast = ast;
 		return context.scope(ast, context => {
 			ast.body = me.stmts(ast.body, context);
 			return ast;
@@ -134,6 +135,7 @@ function traverser(args) {
 		    	return stmt;
 
 		    case 'BreakStatement':
+		    case 'EmptyStatement':
 		    	break;
 
 		    case undefined:
@@ -206,19 +208,13 @@ function traverser(args) {
 		        expr.right = me.expr(expr.right, context);
 		        return expr;
 		    case 'ConditionalExpression':
-		    	expr.test = me.expr(expr.test, context)
-		    	expr.consequent = me.expr(expr.consequent, context)
-		    	expr.alternate = me.expr(expr.alternate, context)
-		    	return expr;
+		    	return me.conditional(expr, context);
 		    case 'BinaryExpression':
 		    case 'LogicalExpression':
-		    	expr.left = me.expr(expr.left, context)
-		    	expr.right = me.expr(expr.right, context)
-		    	return expr;
+		    	return me.binary(expr, context);
 		    case 'UnaryExpression':
 		    case 'UpdateExpression':
-		    	expr.argument = me.expr(expr.argument, context)
-		    	return expr;
+		    	return me.unary(expr, context);
 		    case 'MonadExpression':
 		    	return me.monad(expr, context);
 		    case 'Identifier':
@@ -255,17 +251,33 @@ function traverser(args) {
 	}
 
 	me.comprehension = (c, context) => {
-		c.filter = c.filter && me.expr(c.filter)
+		c.filter = c.filter && me.expr(c.filter, context)
 		c.blocks.forEach(b => {
-			b.right = me.expr(b.right)
+			b.right = me.expr(b.right, context)
 		})
-		c.body = me.expr(c.body)
+		c.body = me.expr(c.body, context)
 		return c;
 	}
 
 	me.monad = (m, context) => {
 		m.body = me.stmt(m.body, context);
 		return m;
+	}
+
+	me.conditional = (expr, context) => {
+		expr.test = me.expr(expr.test, context)
+    	expr.consequent = me.expr(expr.consequent, context)
+    	expr.alternate = me.expr(expr.alternate, context)
+    	return expr;
+	}
+	me.binary = (expr, context) => {
+		expr.left = me.expr(expr.left, context)
+    	expr.right = me.expr(expr.right, context)
+    	return expr;
+	}
+	me.unary = (expr, context) => {
+		expr.argument = me.expr(expr.argument, context)
+		return expr;
 	}
 
 	me.ident = x => x;
