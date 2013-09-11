@@ -60,4 +60,32 @@ describe('Array Comprehension', function () {
             6
         ]);
     });
+    it('allows local variables', function () {
+        var a = {
+                x: 'a',
+                y: 'b'
+            };
+        (function () {
+            var __comp = [];
+            for (var k in a) {
+                var v = a[k];
+                __comp.push(k + '=' + v);
+            }
+            return __comp;
+        }().join(' ').should.equal('x=a y=b'));
+    });
+    it('allows local variables as first statement', function () {
+        var a = {
+                x: 'a',
+                y: 'b'
+            };
+        (function () {
+            var __comp = [];
+            var pre = 'Hello ';
+            for (var k in a) {
+                __comp.push(pre + k);
+            }
+            return __comp;
+        }().join(', ').should.equal('Hello x, Hello y'));
+    });
 });

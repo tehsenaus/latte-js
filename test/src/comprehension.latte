@@ -19,4 +19,18 @@ describe('Array Comprehension', function () {
 		var evens = [a[i] for (i in a) if (a[i] % 2 == 0)]
 		evens.should.eql([2, 4, 6]);
 	})
+
+	it('allows local variables', function () {
+		var a = {x: 'a', y: 'b'};
+		
+		[k + '=' + v for (k in a) with v = a[k]].join(' ')
+			.should.equal('x=a y=b');
+	})
+
+	it('allows local variables as first statement', function () {
+		var a = {x: 'a', y: 'b'};
+		
+		[pre + k with pre = 'Hello ' for (k in a)].join(', ')
+			.should.equal('Hello x, Hello y');
+	})
 })
