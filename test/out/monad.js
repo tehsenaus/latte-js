@@ -153,4 +153,40 @@ describe('Monad Expression', function () {
             }
         }());
     });
+    it('works with if statement', function (done) {
+        (function () {
+            var __b = function (v, n) {
+                return typeof v.then == 'function' ? v.then(n) : n(v);
+            };
+            {
+                var x;
+                return __b(true ? function () {
+                    var __b = function (v, n) {
+                        return typeof v.then == 'function' ? v.then(n) : n(v);
+                    };
+                    {
+                        return __b(async('Meee'), function (__t0) {
+                            x = __t0;
+                        });
+                    }
+                }() : function () {
+                    var __b = function (v, n) {
+                        return typeof v.then == 'function' ? v.then(n) : n(v);
+                    };
+                    {
+                        ;
+                        x = 'You';
+                    }
+                }(), function (__t1) {
+                    ;
+                    ;
+                    ;
+                    ;
+                    __t1;
+                    x.should.equal('Meee');
+                    done();
+                });
+            }
+        }());
+    });
 });

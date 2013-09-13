@@ -269,29 +269,44 @@ var hasBindsTraverser = traverser({
 		return context.hasBinds;
 	},
 
+	stmtHasBinds: function (stmt) {
+		var context = this.context();
+		this.stmt(stmt, context);
+		return context.hasBinds;
+	},
+
 	unary: function (expr, context) {
 		if ( expr.operator === "<<" ) {
 			context.hasBinds = true;
 		}
 		return this.super.unary(expr, context);
+	},
+
+	monad: function () {
+		// We stop here: binds are local
 	}
 });
-
-
 function exprHasBinds(expr) {
 	return hasBindsTraverser.exprHasBinds(expr);
 }
+function stmtHasBinds(stmt) {
+	return hasBindsTraverser.stmtHasBinds(stmt);
+}
+
 function genBind(expr) {
 	return {
 		type: 'UnaryExpression', operator: '<<',
 		argument: expr
 	}
 }
-function genMonadExpr(expr) {
+function genMonad(stmts) {
 	return {
 		type: 'MonadExpression',
-		body: gen.block( gen.ret(expr) )
+		body: gen.block( stmts )
 	}
+}
+function genMonadExpr(expr) {
+	return genMonad(gen.ret(expr));
 }
 
 var monadTransformer = traverser({
@@ -305,6 +320,31 @@ var monadTransformer = traverser({
 
 		context.isInBind = oldIsInBind;
 		return bound;
+	},
+
+	ifStmt: function (stmt, context) {
+		var aHasBinds = stmtHasBinds(stmt.consequent)
+			bHasBinds = stmt.alternate && stmtHasBinds(stmt.alternate);
+
+		if ( aHasBinds || bHasBinds ) {
+
+			// If statement contains binds. Turn this into a conditional expression
+			// with monads on either side.
+			
+			var c = { type: 'ExpressionStatement', expression: genBind( gen.conditional(
+				stmt.test,
+				genMonad(stmt.consequent),
+				stmt.alternate ? genMonad(stmt.alternate) : gen.val(true)
+			) ) };
+
+			c = this.stmt(c, context);
+			
+			console.log("COND", c);
+
+			return c;
+		}
+
+		return this.super.ifStmt(stmt, context);
 	},
 
 	unary: function (expr, context) {

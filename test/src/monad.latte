@@ -74,4 +74,21 @@ describe('Monad Expression', function () {
 		}
 	})
 
+
+
+	it('works with if statement', function (done) {
+		do {
+			var x;
+			if ( true ) {
+				x = << async('Meee')
+			} else {
+				x = 'You';
+			}
+
+			x.should.equal('Meee');
+			done();
+		}
+	})
+
+
 })

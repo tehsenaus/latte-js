@@ -1,0 +1,18 @@
+var Q = require("q");
+
+function async(x) {
+	var d = Q.defer();
+	setTimeout(() => d.resolve(x), 100);
+	return d.promise;
+}
+
+do {
+	var x;
+	if ( true ) {
+		x = << async('Meee')
+	} else {
+		x = 'You';
+	}
+
+	console.log(x);
+}

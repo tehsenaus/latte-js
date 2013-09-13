@@ -86,12 +86,7 @@ function traverser(args) {
 		        return stmt;
 
 		    case 'IfStatement': 
-		    	return {
-		    		type: 'IfStatement',
-		    		test: stmt.test && me.expr(stmt.test, context),
-		    		consequent: me.stmt(stmt.consequent, context),
-		    		alternate: stmt.alternate && me.stmt(stmt.alternate, context)
-		    	}
+		    	return me.ifStmt(stmt, context)
 
 		    case 'ForStatement': 
 		    	return {
@@ -154,6 +149,15 @@ function traverser(args) {
 		});
 	}
 
+	me.ifStmt = (stmt, context) => {
+		return {
+    		type: 'IfStatement',
+    		test: stmt.test && me.expr(stmt.test, context),
+    		consequent: me.stmt(stmt.consequent, context),
+    		alternate: stmt.alternate && me.stmt(stmt.alternate, context)
+    	}
+	}
+	
 	me.forInStmt = (stmt, context) => {
 		stmt.body = me.stmt(stmt.body, context)
 		return stmt;

@@ -89,6 +89,15 @@ module.exports = {
     	}
 	},
 
+	conditional: function (test, cons, alt) {
+		return {
+			type: 'ConditionalExpression',
+			test: test,
+			consequent: cons,
+			alternate: alt
+		}
+	},
+
 	exprStmt: function (e) {
 		return e.type == 'ExpressionStatement' ? e : {
 			type: 'ExpressionStatement',
