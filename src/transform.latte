@@ -322,6 +322,14 @@ var monadTransformer = traverser({
 		return bound;
 	},
 
+	traverse: function (ast) {
+		ast = this.super.traverse(ast);
+		if ( ast.hasMonads ) {
+			ast.body.splice(0,0, MONAD_BIND_FN);
+		}
+		return ast;
+	},
+
 	ifStmt: function (stmt, context) {
 		var aHasBinds = stmtHasBinds(stmt.consequent)
 			bHasBinds = stmt.alternate && stmtHasBinds(stmt.alternate);
@@ -344,7 +352,15 @@ var monadTransformer = traverser({
 			return c;
 		}
 
-		return this.super.ifStmt(stmt, context);
+		// Doesn't contain binds, but may contain other monads
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.ifStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
 	},
 
 	unary: function (expr, context) {
@@ -430,10 +446,9 @@ var monadTransformer = traverser({
 
 		// Traverse to get all binds
 		m = this.super.monad(m, context);
-		console.log(m);
 
 		var body = binds.reduceRight(
-			(s, b) => (console.log(s), gen.block(b.stmts.concat([
+			(s, b) => (gen.block(b.stmts.concat([
 				gen.ret( gen.call(MONAD_BIND, [
 					b.expr, gen.arrow([b.t], s)
 				]) )
@@ -443,14 +458,14 @@ var monadTransformer = traverser({
 		)
 
 		context.monad = lastMonad;
+		context.ast.hasMonads = true;
 
 		return gen.closure([
-			MONAD_BIND_FN,
 			body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
 		])
 	}
 })
-var MONAD_BIND = '__b';
+var MONAD_BIND = '__when';
 var MONAD_BIND_FN = gen.varDecl(MONAD_BIND, {
     "type": "ArrowFunctionExpression",
     "id": null,
