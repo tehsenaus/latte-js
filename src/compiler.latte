@@ -4,6 +4,7 @@ var esprima = require("../lib/esprima-latte"),
 	transform = require("../lib/transform"),
 	es = require('event-stream'),
 	fs = require('fs'),
+	mkdirp = require('mkdirp'),
 	path = require('path'),
 	glob = require("glob"),
 	util = require('util');
@@ -66,22 +67,27 @@ compiler.files = function (options) {
 			if (!file) return cb();
 
 			var filePath = path.join(inputDir, file),
-				output = file.replace('.latte', '.js')
+				output = file.replace('.latte', '.js'),
+				outputPath = path.join(outputDir, output);
 
-			stream.emit('data', output);
+			mkdirp(path.dirname(outputPath), null, function (err) {
+				if (err) return cb(err);
 
-			var compiler = compileFile(filePath, options);
+				stream.emit('data', output);
 
-			compiler.on('end', function () {
-				cb(null);
+				var compiler = compileFile(filePath, options);
+
+				compiler.on('end', function () {
+					cb(null);
+				});
+				compiler.on('error', function (e) {
+					cb(file + ': ' + e);
+				});
+
+				compiler.pipe(fs.createWriteStream(
+					outputPath
+				));
 			});
-			compiler.on('error', function (e) {
-				cb(file + ': ' + e);
-			});
-
-			compiler.pipe(fs.createWriteStream(
-				path.join(outputDir, output)
-			));
 		}),
 		es.join('\n')
 	)

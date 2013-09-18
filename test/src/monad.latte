@@ -6,14 +6,14 @@ describe('Monad Expression', function () {
 
 	function async(x) {
 		var d = Q.defer();
-		setTimeout(() => d.resolve(x), 100);
+		setTimeout(() => d.resolve(x), 10);
 		return d.promise;
 	}
 
 	it('flattens async control flow', function (done) {
 		function async(x) {
 			var d = Q.defer();
-			setTimeout(() => d.resolve(x), 100);
+			setTimeout(() => d.resolve(x), 10);
 			return d.promise;
 		}
 		do {
@@ -21,6 +21,16 @@ describe('Monad Expression', function () {
 			x.should.equal('Meee');
 			done();
 		}
+	})
+
+	it('allows multiple binds', function (done) {
+		(do {
+			var x =<< async('Meee');
+			x.should.equal('Meee');
+			var y =<< async('You');
+			y.should.equal('You');
+			done();
+		}).done();
 	})
 
 	it('works with conditionals', function (done) {

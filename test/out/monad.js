@@ -1,5 +1,5 @@
 var __when = function (v, n) {
-    return typeof v.then == 'function' ? v.then(n) : n(v);
+    return v && typeof v.then == 'function' ? v.then(n) : n(v);
 };
 var should = require('should');
 var Q = require('q');
@@ -8,7 +8,7 @@ describe('Monad Expression', function () {
         var d = Q.defer();
         setTimeout(function () {
             return d.resolve(x);
-        }, 100);
+        }, 10);
         return d.promise;
     }
     it('flattens async control flow', function (done) {
@@ -16,20 +16,41 @@ describe('Monad Expression', function () {
             var d = Q.defer();
             setTimeout(function () {
                 return d.resolve(x);
-            }, 100);
+            }, 10);
             return d.promise;
         }
         (function () {
             {
                 return __when(async('Meee'), function (__t0) {
+                    ;
+                    ;
+                    ;
                     var x = __t0;
-                    ;
-                    ;
                     x.should.equal('Meee');
                     done();
                 });
             }
         }());
+    });
+    it('allows multiple binds', function (done) {
+        (function () {
+            {
+                return __when(async('Meee'), function (__t0) {
+                    var x = __t0;
+                    x.should.equal('Meee');
+                    return __when(async('You'), function (__t1) {
+                        ;
+                        ;
+                        ;
+                        ;
+                        ;
+                        var y = __t1;
+                        y.should.equal('You');
+                        done();
+                    });
+                });
+            }
+        }().done());
     });
     it('works with conditionals', function (done) {
         (function () {
@@ -37,13 +58,15 @@ describe('Monad Expression', function () {
                 return __when(true ? function () {
                     {
                         return __when(async('Meee'), function (__t0) {
+                            ;
                             return __t0;
                         });
                     }
                 }() : 'You', function (__t1) {
+                    ;
+                    ;
+                    ;
                     var x = __t1;
-                    ;
-                    ;
                     x.should.equal('Meee');
                     done();
                 });
@@ -65,14 +88,16 @@ describe('Monad Expression', function () {
                 return __when(false ? function () {
                     {
                         return __when(async('Meee'), function (__t0) {
+                            ;
                             return __t0;
                         });
                     }
                 }() : 'You', function (__t1) {
+                    ;
+                    ;
+                    ;
+                    ;
                     var x = __t1;
-                    ;
-                    ;
-                    ;
                     x.should.equal('You');
                     asyncCalled.should.equal(false);
                     done();
@@ -86,13 +111,15 @@ describe('Monad Expression', function () {
                 return __when(true && function () {
                     {
                         return __when(async('Meee'), function (__t0) {
+                            ;
                             return __t0;
                         });
                     }
                 }(), function (__t1) {
+                    ;
+                    ;
+                    ;
                     var x = __t1;
-                    ;
-                    ;
                     x.should.equal('Meee');
                     done();
                 });
@@ -114,14 +141,16 @@ describe('Monad Expression', function () {
                 return __when('You' || function () {
                     {
                         return __when(async('Meee'), function (__t0) {
+                            ;
                             return __t0;
                         });
                     }
                 }(), function (__t1) {
+                    ;
+                    ;
+                    ;
+                    ;
                     var x = __t1;
-                    ;
-                    ;
-                    ;
                     x.should.equal('You');
                     asyncCalled.should.equal(false);
                     done();
@@ -136,6 +165,7 @@ describe('Monad Expression', function () {
                 return __when(true ? function () {
                     {
                         return __when(async('Meee'), function (__t0) {
+                            ;
                             x = __t0;
                         });
                     }
@@ -150,6 +180,7 @@ describe('Monad Expression', function () {
                     ;
                     ;
                     __t1;
+                    ;
                     x.should.equal('Meee');
                     done();
                 });

@@ -346,8 +346,6 @@ var monadTransformer = traverser({
 			) ) };
 
 			c = this.stmt(c, context);
-			
-			console.log("COND", c);
 
 			return c;
 		}
@@ -357,6 +355,53 @@ var monadTransformer = traverser({
 		context.monad = null;
 		
 		stmt = this.super.ifStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+
+	forInStmt: function (stmt, context) {
+
+		if ( !stmt.monadic && stmtHasBinds(stmt.body) ) {
+
+			// Body contains binds. Convert to a chain of 
+			// binds on a new monad block representing the body.
+			
+			var monad = genMonad(stmt.body);
+			var bodyClosure = gen.arrow([], monad);
+			var chain = gen.ident( context.temp() );
+
+			stmt.left.kind = 'let';
+			stmt.body = gen.assignStmt(
+				chain, gen.call(MONAD_BIND, [ chain, bodyClosure ])
+			)
+			stmt.monadic = true;
+
+			return gen.block(this.stmts([
+				gen.varDecl(chain, null),
+				stmt,
+				gen.exprStmt( genBind(chain) )
+			], context));
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.forInStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+
+	func: function (stmt, context) {
+		// Inner functions have new context
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.func(stmt, context);
 		
 		context.monad = oldMonad;
 
@@ -412,9 +457,9 @@ var monadTransformer = traverser({
 		stmt = this.super.stmt(stmt, context);
 
 		if ( context.monad ) {
-			if ( context.stmt.hasBinds ) {
+			/*if ( context.stmt.hasBinds ) {
 
-			} else if ( stmt.type != 'BlockStatement' ) {
+			} else*/ if ( stmt.type != 'BlockStatement' ) {
 				context.monad.stmt(stmt);
 				stmt = {
 		            "type": "EmptyStatement"
@@ -483,15 +528,20 @@ var MONAD_BIND_FN = gen.varDecl(MONAD_BIND, {
     "body": {
         "type": "ConditionalExpression",
         "test": {
-            "type": "BinaryExpression",
-            "operator": "==",
-            "left": {
-                "type": "UnaryExpression",
-                "operator": "typeof",
-                "argument": gen.member('v', 'then')
-            },
-            "right": gen.val("function")
-        },
+        	"type": "LogicalExpression",
+        	"operator": "&&",
+        	"left": gen.ident('v'),
+        	"right": {
+	            "type": "BinaryExpression",
+	            "operator": "==",
+	            "left": {
+	                "type": "UnaryExpression",
+	                "operator": "typeof",
+	                "argument": gen.member('v', 'then')
+	            },
+	            "right": gen.val("function")
+	        },
+	    },
         "consequent": gen.call(
         	gen.member('v', 'then'),
         	[ "n" ]

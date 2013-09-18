@@ -1,0 +1,36 @@
+var Q = require("q");
+
+function async(x) {
+	var d = Q.defer();
+	setTimeout(() => d.resolve(x), 100);
+	return d.promise;
+}
+
+do {
+	var x = "";
+	
+	for ( var i in {a:1, b:1} ) {
+		console.log(x);
+		x += << async(i);
+	}
+
+	console.log(x);
+}
+
+
+
+// do {
+// 	var x = "";
+	
+// 	var _c;
+// 	for ( let i in {a:1, b:1} ) {
+// 		_c = __bind(_c, function () {
+// 			return do {
+// 				x += << async(i);
+// 			}
+// 		})
+// 	}
+// 	<< _c;
+
+// 	console.log(x);
+// }

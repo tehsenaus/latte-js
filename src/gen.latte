@@ -89,6 +89,18 @@ module.exports = {
     	}
 	},
 
+	assign: function (left, right, op) {
+		return  {
+            "type": "AssignmentExpression",
+            "operator": op || "=",
+            "left": this.ident(left),
+            "right": this.ident(right)
+        }
+	},
+	assignStmt: function () {
+		return this.exprStmt(this.assign.apply(this, arguments));
+	},
+
 	conditional: function (test, cons, alt) {
 		return {
 			type: 'ConditionalExpression',
