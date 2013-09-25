@@ -1,0 +1,14 @@
+
+var should = require("should");
+
+describe('For-of statement', function () {
+
+	it('iterates over arrays', function () {
+		var r = "";
+		for (var x of ['a','b','c']) {
+			r += x;
+		}
+		r.should.equal("abc");
+	})
+
+})

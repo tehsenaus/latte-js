@@ -101,4 +101,31 @@ describe('Monad Expression', function () {
 	})
 
 
+
+	it('works with for-in statement', function (done) {
+		do {
+			var x = "";
+			
+			for ( var i in {a:1, b:1} ) {
+				x += << async(i);
+			}
+
+			x.should.equal('ab');
+			done();
+		}
+	})
+
+
+	it('works with for-of statement', function (done) {
+		do {
+			var r = "";
+			for (var x of ['a','b','c']) {
+				r += << async(x);
+			}
+
+			r.should.equal('abc');
+			done();
+		}
+	})
+	
 })

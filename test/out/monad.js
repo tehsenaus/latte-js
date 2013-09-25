@@ -1,3 +1,6 @@
+function __iter(v, f) {
+    v.forEach(f);
+}
 var __when = function (v, n) {
     return v && typeof v.then == 'function' ? v.then(n) : n(v);
 };
@@ -182,6 +185,79 @@ describe('Monad Expression', function () {
                     __t1;
                     ;
                     x.should.equal('Meee');
+                    done();
+                });
+            }
+        }());
+    });
+    it('works with for-in statement', function (done) {
+        (function () {
+            {
+                var x = '';
+                var __t0;
+                Object.keys({
+                    a: 1,
+                    b: 1
+                }).forEach(function (i) {
+                    __t0 = __when(__t0, function () {
+                        return function () {
+                            {
+                                return __when(async(i), function (__t1) {
+                                    ;
+                                    x += __t1;
+                                });
+                            }
+                        }();
+                    });
+                });
+                return __when(__t0, function (__t2) {
+                    ;
+                    {
+                        ;
+                        ;
+                        ;
+                    }
+                    ;
+                    ;
+                    __t2;
+                    x.should.equal('ab');
+                    done();
+                });
+            }
+        }());
+    });
+    it('works with for-of statement', function (done) {
+        (function () {
+            {
+                var r = '';
+                var __t0;
+                __iter([
+                    'a',
+                    'b',
+                    'c'
+                ], function (x) {
+                    __t0 = __when(__t0, function () {
+                        return function () {
+                            {
+                                return __when(async(x), function (__t1) {
+                                    ;
+                                    r += __t1;
+                                });
+                            }
+                        }();
+                    });
+                });
+                return __when(__t0, function (__t2) {
+                    ;
+                    {
+                        ;
+                        ;
+                        ;
+                    }
+                    ;
+                    ;
+                    __t2;
+                    r.should.equal('abc');
                     done();
                 });
             }
