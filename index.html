@@ -1,51 +1,209 @@
-<!doctype html>
-<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
-<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
-<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title></title>
-    <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
-    <link rel="stylesheet" href="styles/d7af24c8.main.css">
-    <script src="scripts/vendor/f7f27360.modernizr.js"></script>
-  </head>
-  <body>
-    <div class="container">
-      <div class="jumbotron">
-        <h1>'Allo, 'Allo!</h1>
-        <p>You now have</p>
-        <ul>
-          <li>HTML5 Boilerplate</li>
-          <li>Bootstrap</li>
-          <li>Font Awesome <i class="icon-flag"></i></li>
-        </ul>
-        <p>installed.</p>
-        <h3>Enjoy coding! - Yeoman</h3>
-      </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Latte JS</title>
+<link href="/lib/bootstrap/bootstrap.css" rel="stylesheet">
+<link href="//netdna.bootstrapcdn.com/font-awesome/3.1.1/css/font-awesome.css" rel="stylesheet">
+
+<link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+
+<body data-spy="scroll" data-target="#sidenav">
+<div class="well" style="width: 50%; margin: 0 auto" data-bind="visible: false">Loading...</div>
+<div id="page" style="display: none" data-bind="visible: true">
+
+<div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-header">
+        <a class="navbar-brand" href="#">
+            <span id="logo">
+                <i class="icon-heart"></i><i class="icon-coffee"></i>
+            </span>
+            latte js</a>
     </div>
 
-
-    <!--[if lt IE 7]>
-      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-    <![endif]-->
-
-    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
-    <script>
-      (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
-      function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
-      e=o.createElement(i);r=o.getElementsByTagName(i)[0];
-      e.src='//www.google-analytics.com/analytics.js';
-      r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
-      ga('create','UA-XXXXX-X');ga('send','pageview');
-    </script>
+    <div class="navbar-collapse collapse">
+        <ul class="nav navbar-nav">
+            <li>
+                <a href=#install>Install</a>
+            </li><li>
+                <a href=#usage>Docs</a>
+            </li><li>
+                <a href="http://github.com/tehsenaus/latte-js">Github</a>
+            </li>
+        </ul>
+    </div>
+</div>
 
 
-        <script src="scripts/3e6162a6.main.js"></script>
+<div class="container">
+    <div id="blurb" class="jumbotron">
+        <div id="big-logo">
+            <i class="icon-heart"></i><i class="icon-coffee"></i>
+        </div>
+        <h1>JavaScript, with a little milk and sugar</h1>
+        <p>
+            Latte is a superset of JavaScript with lots of useful extensions.
+            Get the power of CoffeeScript, but keep the syntax you know and love.
+        </p>
+    </div>
 
-        <script src="scripts/vendor/491c175a.bootstrap.js"></script>
+    <div class="row">
+        <div class="col-md-3"><ul id="sidenav" class="nav" data-spy="affix" data-offset-top="220">
+            <li><a href=#install>Installation</a></li>
+            <li><a href=#usage>Usage</a></li>
+            <li><a href=#let>Let Statement</a></li>
+            <li><a href=#functions>Functions</a></li>
+            <li><a href=#arrays>Arrays</a></li>
+            <li>
+                <a href=#monads>Monads</a>
+                <ul class="nav">
+                    <li><a href=#monads-basic>Basic Usage</a></li>
+                    <li><a href=#monads-bind>Bind Operator</a></li>
+                    <li><a href=#monads-expr>Do Expression</a></li>
+                    <li><a href=#monads-conditionals>Conditionals</a></li>
+                    <li><a href=#monads-loops>Loops</a></li>
+                    <li><a href=#monads-closures>Beware Closures!</a></li>
+                </ul>
+            </li>
+            <li><a href=#contribute>Get Involved!</a></li>
+        </ul></div>
+
+        <div id="language-section" class="col-md-9">
+
+            <div class="docs-section">
+                <h1 id="install">Install</h1>
+                <p>Latte is available on npm (browser version coming soon). Install globally:</p>
+                <p><pre class=well>
+npm install -g latte</pre></p>
+                <p>...or locally:</p>
+                <p><pre class=well>
+npm install --save-dev latte</pre></p>
+            </div>
+
+            <div class="docs-section">
+                <h1 id="usage">Usage</h1>
+                <p>On the command line:</p>
+                <pre>
+$ latte --help
+Latte.js compiler.
+Usage: latte [options] [--] files...
+
+Options:
+  -c, --compile  Compile input files. If not specified, evaluates the files.
+  -o, --output   Output directory, to be used with --compile.               
+  --version      Show version </pre>
+
+                <p>With Grunt:</p>
+                <pre>
+grunt.loadNpmTasks('latte');
+grunt.initConfig({
+  latte: {
+    client: {
+      inputDir: 'src/client',
+      outputDir: 'lib/client'
+    }
+  }
+});</pre>
+            </div>
+
+            <div class="docs-section">
+                <h1 id="let">Let Statement</h1>
+                <p>Latte adds support for the <a href="http://globaldev.co.uk/2013/09/es6-part-2/">ES6 Let Statement</a></p>
+            </div>
+
+            <div class="docs-section">
+                <h1 id="functions">Functions</h1>
+                <p>Latte adds support for <a href="http://tc39wiki.calculist.org/es6/arrow-functions/">ES6 Arrow Functions</a>. Use like lambdas:</p>
+                <div class="demo-compile">
+                    <pre>
+xs.map(x => x * x)</pre>
+                </div>
+            </div>
+
+            <div class="docs-section">
+                <h1 id="arrays">Arrays</h1>
+                <p>Latte adds support for <a href="http://wiki.ecmascript.org/doku.php?id=harmony:array_comprehensions">ES6 array comprehensions</a>.</p>
+            </div>
+
+            <div class="docs-section">
+                <h1 id="monads">Monads (Promises made beautiful)</h1>
+                <p>
+                    Anyone who's done serious work in Node knows that async can be a pain.
+                    Latte supports monad constructs to make life simpler again.
+                </p>
+                <p>
+                    Latte's monad construct is inspired by <a href="http://en.wikibooks.org/wiki/Haskell/do_Notation" target=_blank>do-notation in Haskell</a>. Monads may sound scary, but really
+                    <a href="http://blog.jcoglan.com/2011/03/11/promises-are-the-monad-of-asynchronous-programming/" target=_blank>they're just promises</a>, and with latte you can write async code as if it was synchronous.
+                </p>
+
+                <h2 id="monads-basic">Basic Usage</h2>
+                <p>
+                    jQuery's ajax() returns a promise, so we can use do-notation to make this code look synchronous.
+                </p>
+                <div class="demo-compile">
+                    <pre>
+do {
+    var result = << jQuery.get('http://example.com');
+    alert(result);
+}</pre>
+                </div>
+
+                <h2 id="monads-bind">Bind Operator</h2>
+                <p>
+                    The bind operator (<<) is the magic which makes this work.
+                    It's a unary operator, which takes any value. If that value evaluates to a promise
+                    (an object with a then() method),
+                    execution will yield at that point, and resume when the promise is resolved.
+                    The value of the expression will then be the resoved value of the promise.
+                </p>
+                <p>
+                    This expression can be used anywhere inside a do {} block. So for the jQuery example above,
+                    we could have wrote:
+                </p>
+                <div class="demo-compile">
+                    <pre>
+do {
+    alert(<< jQuery.get('http://example.com'));
+}</pre>
+                </div>
+            </div>
+
+            <div class="docs-section">
+                <h1 id="contribute">Get Involved</h1>
+                <div id="logo-contribute" class="col-md-4" style="float: right;">
+                    <i class="icon-plus"></i>
+                    <i class="icon-heart"></i><i class="icon-coffee"></i>
+                </div>
+                <p>
+                    Latte is at an early stage of development, and I'm keen to hear any thoughts,
+                    suggestions, issues, criticisms, and I welcome contributions!
+                </p>
+                <p>
+                    <iframe src="http://ghbtns.com/github-btn.html?user=tehsenaus&repo=latte-js&type=watch"
+                        allowtransparency="true" frameborder="0" scrolling="0" width="62" height="20"></iframe>
+                    <iframe src="http://ghbtns.com/github-btn.html?user=tehsenaus&repo=latte-js&type=fork"
+                        allowtransparency="true" frameborder="0" scrolling="0" width="62" height="20"></iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <p>
+        Created by <a href="http://twitter.com/teh_senaus" target=_blank>@teh_senaus</a>
+    </p>
+    <p>
+        <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Latte JS documentation</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US">Creative Commons Attribution-ShareAlike 3.0 Unported License</a>.
+    </p>
+</footer>
+
+<script src="/lib/jquery/jquery.js"></script>
+<script src="/lib/bootstrap/bootstrap.js"></script>
+<script src="/lib/knockout.js/knockout.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout-bootstrap/0.2.1/knockout-bootstrap.min.js"></script>
+<script src="/app.js"></script>
+</div>
 </body>
 </html>

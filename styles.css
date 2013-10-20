@@ -1,0 +1,67 @@
+.container {
+  margin-top: 5em;
+}
+#blurb h1 {
+  font-size: 1.75em;
+}
+#big-logo {
+  font-size: 4em;
+  display: block;
+  float: left;
+  width: 2.5em;
+  margin-top: -0.25em;
+}
+#sidenav {
+  margin-bottom: 30px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-shadow: 0 1px 0 #fff;
+  background-color: #f7f5fa;
+  border-radius: 5px;
+}
+#sidenav a {
+  display: block;
+  color: #716b7a;
+  padding: 5px 20px;
+}
+#sidenav.affix {
+  top: 80px;
+  width: 263px;
+}
+#sidenav .nav {
+  display: none;
+}
+#sidenav .nav a {
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-left: 30px;
+  font-size: 90%;
+  font-weight: normal;
+}
+#sidenav .active .nav {
+  display: block;
+}
+#sidenav .active,
+#sidenav .nav .active a {
+  font-weight: bold;
+}
+.docs-section h1 {
+  margin-top: 2em;
+}
+.docs-section:first-child h1 {
+  margin-top: 0;
+}
+.docs-section h2 {
+  margin-top: 1em;
+}
+#logo-contribute {
+  font-size: 3em;
+}
+footer {
+  padding-top: 40px;
+  padding-bottom: 30px;
+  margin-top: 100px;
+  color: #777;
+  text-align: center;
+  border-top: 1px solid #e5e5e5;
+}
