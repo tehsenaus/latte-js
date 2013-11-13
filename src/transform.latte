@@ -616,6 +616,33 @@ var forOfTransformer = traverser({
 });
 
 
+var flatten = require("mout/array/flatten");
+var cleanupTransformer = traverser({
+	stmts: function (stmts, context) {	
+		// Remove empty stmts
+		stmts = stmts.filter(s => s.type != 'EmptyStatement');
+
+		// Remove pointless blocks
+		stmts = flatten(stmts.map(s => s.type == 'BlockStatement' ? s.body : s));
+
+		return this.super.stmts(stmts, context);
+	},
+
+	// Remove pointless closures
+	// E.g. if closure has no args, and just immediately returns something.
+	callExpr: function (expr, context) {
+		if ( expr.callee.type == 'FunctionExpression' && expr.arguments.length == 0 ) {
+			if ( expr.callee.body.body.length == 0 ) {
+
+			} else if ( expr.callee.body.body[0].type == 'ReturnStatement' ) {
+				return this.expr(expr.callee.body.body[0].argument, context);
+			}
+		}
+
+		return this.super.callExpr(expr, context);
+	}
+});
+
 
 
 var 
@@ -639,6 +666,11 @@ var transformers = [
 	forFilterTransformer,
 	insertIterTransformer,
 	letTransformer,
+
+	// Run a few passes
+	cleanupTransformer,
+	cleanupTransformer,
+
 	insertLexicalThisTransformer
 ]
 

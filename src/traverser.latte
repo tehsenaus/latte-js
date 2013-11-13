@@ -194,6 +194,7 @@ function traverser(args) {
 			case 'ArrowFunctionExpression':
 				return me.arrowFuncExpr(expr, context);
 			case 'CallExpression':
+				return me.callExpr(expr, context);
 			case 'NewExpression':
 				return {
 					type: expr.type,
@@ -261,6 +262,14 @@ function traverser(args) {
 		}
 
 		return fn.noScope ? doIt(context) : context.scope(fn, doIt);
+	}
+
+	me.callExpr = (expr, context) => {
+		return {
+			type: expr.type,
+			callee: me.expr(expr.callee, context),
+			arguments: expr.arguments.map(arg => me.expr(arg, context))
+		}
 	}
 
 	me.comprehension = (c, context) => {

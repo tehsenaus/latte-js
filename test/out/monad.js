@@ -22,59 +22,31 @@ describe('Monad Expression', function () {
             }, 10);
             return d.promise;
         }
-        (function () {
-            {
-                return __when(async('Meee'), function (__t0) {
-                    ;
-                    ;
-                    ;
-                    var x = __t0;
-                    x.should.equal('Meee');
-                    done();
-                });
-            }
-        }());
+        __when(async('Meee'), function (__t0) {
+            var x = __t0;
+            x.should.equal('Meee');
+            done();
+        });
     });
     it('allows multiple binds', function (done) {
-        (function () {
-            {
-                return __when(async('Meee'), function (__t0) {
-                    var x = __t0;
-                    x.should.equal('Meee');
-                    return __when(async('You'), function (__t1) {
-                        ;
-                        ;
-                        ;
-                        ;
-                        ;
-                        var y = __t1;
-                        y.should.equal('You');
-                        done();
-                    });
-                });
-            }
-        }().done());
+        __when(async('Meee'), function (__t0) {
+            var x = __t0;
+            x.should.equal('Meee');
+            return __when(async('You'), function (__t1) {
+                var y = __t1;
+                y.should.equal('You');
+                done();
+            });
+        }).done();
     });
     it('works with conditionals', function (done) {
-        (function () {
-            {
-                return __when(true ? function () {
-                    {
-                        return __when(async('Meee'), function (__t0) {
-                            ;
-                            return __t0;
-                        });
-                    }
-                }() : 'You', function (__t1) {
-                    ;
-                    ;
-                    ;
-                    var x = __t1;
-                    x.should.equal('Meee');
-                    done();
-                });
-            }
-        }());
+        __when(true ? __when(async('Meee'), function (__t0) {
+            return __t0;
+        }) : 'You', function (__t1) {
+            var x = __t1;
+            x.should.equal('Meee');
+            done();
+        });
     });
     it('doesn\'t evaluate false conditional', function (done) {
         var asyncCalled = false;
@@ -86,48 +58,23 @@ describe('Monad Expression', function () {
             }, 100);
             return d.promise;
         }
-        (function () {
-            {
-                return __when(false ? function () {
-                    {
-                        return __when(async('Meee'), function (__t0) {
-                            ;
-                            return __t0;
-                        });
-                    }
-                }() : 'You', function (__t1) {
-                    ;
-                    ;
-                    ;
-                    ;
-                    var x = __t1;
-                    x.should.equal('You');
-                    asyncCalled.should.equal(false);
-                    done();
-                });
-            }
-        }());
+        __when(false ? __when(async('Meee'), function (__t0) {
+            return __t0;
+        }) : 'You', function (__t1) {
+            var x = __t1;
+            x.should.equal('You');
+            asyncCalled.should.equal(false);
+            done();
+        });
     });
     it('works with logical expression', function (done) {
-        (function () {
-            {
-                return __when(true && function () {
-                    {
-                        return __when(async('Meee'), function (__t0) {
-                            ;
-                            return __t0;
-                        });
-                    }
-                }(), function (__t1) {
-                    ;
-                    ;
-                    ;
-                    var x = __t1;
-                    x.should.equal('Meee');
-                    done();
-                });
-            }
-        }());
+        __when(true && __when(async('Meee'), function (__t0) {
+            return __t0;
+        }), function (__t1) {
+            var x = __t1;
+            x.should.equal('Meee');
+            done();
+        });
     });
     it('supports short circuit evaluation', function (done) {
         var asyncCalled = false;
@@ -139,128 +86,70 @@ describe('Monad Expression', function () {
             }, 100);
             return d.promise;
         }
-        (function () {
-            {
-                return __when('You' || function () {
-                    {
-                        return __when(async('Meee'), function (__t0) {
-                            ;
-                            return __t0;
-                        });
-                    }
-                }(), function (__t1) {
-                    ;
-                    ;
-                    ;
-                    ;
-                    var x = __t1;
-                    x.should.equal('You');
-                    asyncCalled.should.equal(false);
-                    done();
-                });
-            }
-        }());
+        __when('You' || __when(async('Meee'), function (__t0) {
+            return __t0;
+        }), function (__t1) {
+            var x = __t1;
+            x.should.equal('You');
+            asyncCalled.should.equal(false);
+            done();
+        });
     });
     it('works with if statement', function (done) {
         (function () {
-            {
-                var x;
-                return __when(true ? function () {
-                    {
-                        return __when(async('Meee'), function (__t0) {
-                            ;
-                            x = __t0;
-                        });
-                    }
-                }() : function () {
-                    {
-                        ;
-                        x = 'You';
-                    }
-                }(), function (__t1) {
-                    ;
-                    ;
-                    ;
-                    ;
-                    __t1;
-                    ;
-                    x.should.equal('Meee');
-                    done();
-                });
-            }
+            var x;
+            return __when(true ? __when(async('Meee'), function (__t0) {
+                x = __t0;
+            }) : function () {
+                x = 'You';
+            }(), function (__t1) {
+                __t1;
+                x.should.equal('Meee');
+                done();
+            });
         }());
     });
     it('works with for-in statement', function (done) {
         (function () {
-            {
-                var x = '';
-                var __t0;
-                Object.keys({
-                    a: 1,
-                    b: 1
-                }).forEach(function (i) {
-                    __t0 = __when(__t0, function () {
-                        return function () {
-                            {
-                                return __when(async(i), function (__t1) {
-                                    ;
-                                    x += __t1;
-                                });
-                            }
-                        }();
+            var x = '';
+            var __t0;
+            Object.keys({
+                a: 1,
+                b: 1
+            }).forEach(function (i) {
+                __t0 = __when(__t0, function () {
+                    return __when(async(i), function (__t1) {
+                        x += __t1;
                     });
                 });
-                return __when(__t0, function (__t2) {
-                    ;
-                    {
-                        ;
-                        ;
-                        ;
-                    }
-                    ;
-                    ;
-                    __t2;
-                    x.should.equal('ab');
-                    done();
-                });
-            }
+            });
+            return __when(__t0, function (__t2) {
+                __t2;
+                x.should.equal('ab');
+                done();
+            });
         }());
     });
     it('works with for-of statement', function (done) {
         (function () {
-            {
-                var r = '';
-                var __t0;
-                __iter([
-                    'a',
-                    'b',
-                    'c'
-                ], function (x) {
-                    __t0 = __when(__t0, function () {
-                        return function () {
-                            {
-                                return __when(async(x), function (__t1) {
-                                    ;
-                                    r += __t1;
-                                });
-                            }
-                        }();
+            var r = '';
+            var __t0;
+            __iter([
+                'a',
+                'b',
+                'c'
+            ], function (x) {
+                __t0 = __when(__t0, function () {
+                    return __when(async(x), function (__t1) {
+                        r += __t1;
                     });
                 });
-                return __when(__t0, function (__t2) {
-                    ;
-                    {
-                        ;
-                        ;
-                        ;
-                    }
-                    ;
-                    ;
-                    __t2;
-                    r.should.equal('abc');
-                    done();
-                });
-            }
+            });
+            return __when(__t0, function (__t2) {
+                __t2;
+                r.should.equal('abc');
+                done();
+            });
         }());
     });
 });
