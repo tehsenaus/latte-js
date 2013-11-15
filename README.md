@@ -6,6 +6,8 @@ Latte is an extension of JavaScript, bringing features of CoffeeScript in a fami
 
 If you like CoffeeScript, but not the Rubyish syntax, Latte is for you.
 
+http://lattejs.com
+
 ## Get Started
 ### Install
 ```
@@ -41,6 +43,8 @@ latte -o lib/ -c src/
 ```
 
 ## The Language
+
+Full documentation at http://lattejs.com
 
 ### ES6 Features
 
