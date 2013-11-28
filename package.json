@@ -37,8 +37,7 @@
     "glob": "~3.2.6",
     "mkdirp": "~0.3.5",
     "readable-stream": "~1.1.8",
-    "event-stream": "~3.0.16",
-    "mout": "~0.6.0"
+    "event-stream": "~3.0.16"
   },
   "devDependencies": {
     "grunt": "~0.4.1",

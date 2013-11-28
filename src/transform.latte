@@ -616,7 +616,7 @@ var forOfTransformer = traverser({
 });
 
 
-var flatten = require("mout/array/flatten");
+var flatten = Array.apply.bind([].concat, []);
 var cleanupTransformer = traverser({
 	stmts: function (stmts, context) {	
 		// Remove empty stmts
