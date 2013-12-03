@@ -14,11 +14,11 @@ module.exports = {
         }
 	},
 
-	closure: function (stmts, params) {
+	closure: function (stmts, params, id) {
 		params = params || [];
 		return {
             "type": "CallExpression",
-            "callee": this.fn(stmts, params),
+            "callee": this.fn(stmts, params, id),
             "arguments": params.map(p => this.ident(p))
         }
 	},
@@ -38,6 +38,15 @@ module.exports = {
 	},
 	forEachKey: function (x, stmts, itemId) {
 		return this.forEach(this.keys(x), stmts, itemId);
+	},
+
+	ifStmt: function (test, cons, alt) {
+		return {
+            "type": "IfStatement",
+            "test": test,
+            "consequent": this.block(cons),
+            "alternate": alt && this.block(alt)
+        }
 	},
 
 	block: function (stmts) {
@@ -63,10 +72,10 @@ module.exports = {
 	},
 
 
-	fn: function (stmts, params) {
+	fn: function (stmts, params, id) {
 		return {
             "type": "FunctionExpression",
-            "id": null,
+            "id": id && this.ident(id),
             "params": params.map(p => this.ident(p)),
             "defaults": [],
             "body": this.block(stmts),
@@ -79,7 +88,7 @@ module.exports = {
 		return {
             "type": "CallExpression",
             "callee": this.ident(callee),
-            "arguments": args.map(a => this.ident(a))
+            "arguments": (args || []).map(a => this.ident(a))
         }
 	},
 	ret: function (arg) {
@@ -144,5 +153,9 @@ module.exports = {
 	},
 	val: function (value) {
 		return this.lit(JSON.stringify(value), value);
-	}
+	},
+
+	empty: {
+        "type": "EmptyStatement"
+    }
 }

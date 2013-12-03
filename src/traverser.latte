@@ -12,10 +12,11 @@ function traverser(args) {
 
 			enterScope: function (node) {
 				var scope = this.enterBlock(node),
-					temp = 0;
-				scope.temp = function () {
-					return "__t" + temp++;
-				}
+					temp = this.scopes.length ? this.scopes[0].ctemp() : 0;
+				
+				scope.ctemp = () => temp;
+				scope.temp = () => "__t" + temp++;
+
 				this.scopes.unshift(scope);
 				return scope;
 			},
@@ -89,14 +90,7 @@ function traverser(args) {
 		    	return me.ifStmt(stmt, context)
 
 		    case 'ForStatement': 
-		    	return {
-		    		type: 'ForStatement',
-		    		init: stmt.init && me.stmt(stmt.init, context),
-		    		test: stmt.test && me.expr(stmt.test, context),
-		    		update: stmt.update && me.expr(stmt.update, context),
-		    		body: me.stmt(stmt.body, context)
-		    	}
-
+		    	return me.forStmt(stmt, context)
 		    case 'ForInStatement':
 		    	return me.forInStmt(stmt, context)
 		    case 'ForOfStatement':
@@ -104,17 +98,10 @@ function traverser(args) {
 
 		    case 'WhileStatement':
 		    case 'DoWhileStatement':
-		    	stmt.test = me.expr(stmt.test, context)
-		    	stmt.body = me.stmt(stmt.body, context)
-		    	return stmt
+		    	return me.whileDoWhileStmt(stmt, context)
 
 		    case 'SwitchStatement':
-		    	stmt.discriminant = me.expr(stmt.discriminant, context);
-		    	stmt.cases = stmt.cases.map(c => {
-		    		c.consequent = me.stmts(c.consequent, context);
-		    		return c;
-		    	})
-		    	return stmt;
+		    	return me.switchStmt(stmt, context)
 
 		    case 'ReturnStatement':
 		    case 'ThrowStatement':
@@ -124,12 +111,7 @@ function traverser(args) {
 		    	}
 
 		    case 'TryStatement':
-		    	stmt.block = me.stmt(stmt.block, context);
-		    	stmt.handlers.forEach(handler => {
-		    		handler.body = me.stmt(handler.body, context)
-		    	})
-		    	stmt.finalizer = stmt.finalizer && me.stmt(stmt.finalizer, context);
-		    	return stmt;
+		    	return me.tryStmt(stmt, context)
 
 		    case 'BreakStatement':
 		    case 'EmptyStatement':
@@ -159,6 +141,16 @@ function traverser(args) {
     		alternate: stmt.alternate && me.stmt(stmt.alternate, context)
     	}
 	}
+
+	me.forStmt = (stmt, context) => {
+		return {
+    		type: 'ForStatement',
+    		init: stmt.init && me.stmt(stmt.init, context),
+    		test: stmt.test && me.expr(stmt.test, context),
+    		update: stmt.update && me.expr(stmt.update, context),
+    		body: me.stmt(stmt.body, context)
+    	}
+	}
 	
 	me.forInOfStmt = (stmt, context) => {
 		//stmt.right = me.expr(stmt.right, context)
@@ -170,6 +162,30 @@ function traverser(args) {
 	}
 	me.forOfStmt = (stmt, context) => {
 		return me.forInOfStmt(stmt, context)
+	}
+
+	me.whileDoWhileStmt = (stmt, context) => {
+		stmt.test = me.expr(stmt.test, context)
+    	stmt.body = me.stmt(stmt.body, context)
+    	return stmt
+	}
+
+	me.switchStmt = (stmt, context) => {
+		stmt.discriminant = me.expr(stmt.discriminant, context);
+    	stmt.cases = stmt.cases.map(c => {
+    		c.consequent = me.stmts(c.consequent, context);
+    		return c;
+    	})
+    	return stmt;
+	}
+
+	me.tryStmt = (stmt, context) => {
+		stmt.block = me.stmt(stmt.block, context);
+    	stmt.handlers.forEach(handler => {
+    		handler.body = me.stmt(handler.body, context)
+    	})
+    	stmt.finalizer = stmt.finalizer && me.stmt(stmt.finalizer, context);
+    	return stmt;
 	}
 
 	me.varDecl = (stmt, context) => {
@@ -231,6 +247,8 @@ function traverser(args) {
 		    	return me.unary(expr, context);
 		    case 'MonadExpression':
 		    	return me.monad(expr, context);
+		    case 'YieldExpression':
+		    	return me.yieldExpr(expr, context);
 		    case 'Identifier':
 		    	return me.ident(expr, context);
 		    case 'ThisExpression':
@@ -240,7 +258,7 @@ function traverser(args) {
 		    case 'Literal':
 		    	break;
 			default:
-				console.log("Unhandled expr: ", expr.type);
+				throw new Error("Unhandled expr: ", expr);
 		}
 		return expr;
 	}
@@ -257,6 +275,10 @@ function traverser(args) {
 
 	me.func = (fn, context) => {
 		var doIt = context => {
+			if ( fn.generator ) {
+				return me.generator(fn, context)
+			}
+
 			fn.body.body = me.stmts(fn.body.body, context);
 			return fn;
 		}
@@ -281,8 +303,18 @@ function traverser(args) {
 		return c;
 	}
 
+	me.generator = (fn, context) => {
+		fn.body.body = me.stmts(fn.body.body, context);
+		return fn;
+	}
+
 	me.monad = (m, context) => {
 		m.body = me.stmt(m.body, context);
+		return m;
+	}
+
+	me.yieldExpr = (m, context) => {
+		m.argument = me.expr(m.argument, context)
 		return m;
 	}
 
@@ -318,3 +350,19 @@ function traverser(args) {
 }
 
 module.exports = traverser;
+
+
+var explicitTypes = "func ifStmt forStmt forInOfStmt whileDoWhileStmt switchStmt tryStmt";
+traverser.explicit = function (name, args, exceptions) {
+	var t = traverser(args);
+
+	explicitTypes.split(' ').forEach(x => {
+		if ( exceptions && exceptions.indexOf(x) >= 0 || (x in args) ) return;
+
+		t[x] = () => {
+			throw new Error('Unhandled ' + x + ' in ' + name + '!');
+		}
+	});
+
+	return t;
+}

@@ -1,0 +1,41 @@
+
+if ( typeof StopIteration === "undefined" ) {
+	var StopIteration = "StopIteration";
+}
+function __gen(fn) {
+	var closed, born;
+
+	return {
+		next: function () {
+			return this.send();
+		},
+		send: function (v) {
+			if ( closed )
+				throw new Error('generator is closed!');
+
+			if ( !born ) {
+				var v = fn(function __yield(v, next) {
+					fn = next;
+					return v;
+				}, function __stop() {
+					closed = true;
+					throw StopIteration;
+				});
+				born = true;
+				return v;
+			}
+
+			return fn(null, v);
+		},
+		"throw": function (e) {
+			if ( closed )
+				throw new Error('generator is closed!');
+
+			if ( !born ) {
+				throw e;
+			}
+
+			return fn(e);
+		}
+	}
+}

@@ -1,0 +1,3 @@
+function __when(v, n) {
+	return (v && typeof v.then === "function") ? v.then(n) : n(v);
+}

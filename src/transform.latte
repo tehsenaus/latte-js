@@ -2,110 +2,6 @@
 var traverser = require("./traverser"),
 	gen = require("./gen");
 
-var insertLexicalThisTransformer = traverser({
-	traverse: function (ast) {
-		ast = this.super.traverse(ast);
-		if ( ast.requiresLexicalThis ) {
-			ast.body.splice(0,0, SET_LEXICAL_THIS);
-		}
-		return ast;
-	},
-
-	func: (fn, context) => {
-		if (!fn.noScope && fn.requiresLexicalThis) {
-			fn.body.body.splice(0, 0, SET_LEXICAL_THIS);
-		}
-		return insertLexicalThisTransformer.super.func(fn, context);
-	}
-})
-var replaceThisTransformer = traverser({
-	func: fn => fn,
-	thisExpr: function (ident, context) {
-		this.replacedThis = true;
-		return {
-			type: 'Identifier',
-			name: context && context.lexicalThis || LEXICAL_THIS
-		}
-	}
-});
-
-var arrowTransformer = traverser({
-	arrowFuncExpr: (fn, context) => {
-		
-		replaceThisTransformer.replacedThis = false;
-
-		fn = {
-			"type": "FunctionExpression",
-	        "id": null,
-	        "params": fn.params,
-	        "defaults": [],
-	        "body": fn.body.type == 'BlockStatement' ? replaceThisTransformer.stmt(fn.body, context) : {
-	            "type": "BlockStatement",
-	            "body": [
-	                {
-	                    "type": "ReturnStatement",
-	                    "argument": replaceThisTransformer.expr(fn.body, context)
-	                }
-	            ]
-	        },
-	        "rest": null,
-	        "generator": false,
-	        "expression": false,
-	        noScope: true
-		};
-
-		if ( replaceThisTransformer.replacedThis ) {
-			context.scopes[0].node.requiresLexicalThis = true;
-		}
-
-		return arrowTransformer.funcExpr(fn, context);
-	}
-})
-
-function makeLiteral(value, raw) {
-	return {
-        "type": "Literal",
-        "value": value,
-        "raw": raw
-    }
-}
-function makeDefaultQuasi(literals, exprs) {
-	var elems = [], i = 0;
-	while (i < literals.length - 1) {
-      elems.push(makeLiteral(literals[i].value.cooked, literals[i].value.raw));
-      elems.push(exprs[i++]);
-    }
-    elems.push(makeLiteral(literals[i].value.cooked, literals[i].value.raw));
-
-	return {
-	    "type": "CallExpression",
-	    "callee": {
-	        "type": "MemberExpression",
-	        "computed": false,
-	        "object": {
-	            "type": "ArrayExpression",
-	            "elements": elems
-	        },
-	        "property": {
-	            "type": "Identifier",
-	            "name": "join"
-	        }
-	    },
-	    "arguments": [
-	        {
-	            "type": "Literal",
-	            "value": "",
-	            "raw": "''"
-	        }
-	    ]
-	}
-}
-var quasiTransformer = traverser({
-	quasiLiteral: (q, context) => {
-		return makeDefaultQuasi(q.quasis, q.expressions.map(e => quasiTransformer.expr(e)));
-	}
-})
-
 
 
 var arrayDestructuringTransformer = traverser({
@@ -261,300 +157,6 @@ var forFilterTransformer = traverser({
 
 
 
-
-var hasBindsTraverser = traverser({
-	exprHasBinds: function (expr) {
-		var context = this.context();
-		this.expr(expr, context);
-		return context.hasBinds;
-	},
-
-	stmtHasBinds: function (stmt) {
-		var context = this.context();
-		this.stmt(stmt, context);
-		return context.hasBinds;
-	},
-
-	unary: function (expr, context) {
-		if ( expr.operator === "<<" ) {
-			context.hasBinds = true;
-		}
-		return this.super.unary(expr, context);
-	},
-
-	monad: function () {
-		// We stop here: binds are local
-	}
-});
-function exprHasBinds(expr) {
-	return hasBindsTraverser.exprHasBinds(expr);
-}
-function stmtHasBinds(stmt) {
-	return hasBindsTraverser.stmtHasBinds(stmt);
-}
-
-function genBind(expr) {
-	return {
-		type: 'UnaryExpression', operator: '<<',
-		argument: expr
-	}
-}
-function genMonad(stmts) {
-	return {
-		type: 'MonadExpression',
-		body: gen.block( stmts )
-	}
-}
-function genMonadExpr(expr) {
-	return genMonad(gen.ret(expr));
-}
-
-var monadTransformer = traverser({
-	_bind: function (expr, context) {
-		context.stmt.hasBinds = true;
-		
-		var oldIsInBind = context.isInBind;
-		context.isInBind = true
-
-		var bound = context.monad.bind(this.expr(expr, context));
-
-		context.isInBind = oldIsInBind;
-		return bound;
-	},
-
-	traverse: function (ast) {
-		ast = this.super.traverse(ast);
-		if ( ast.hasMonads ) {
-			ast.body.splice(0,0, MONAD_BIND_FN);
-		}
-		return ast;
-	},
-
-	ifStmt: function (stmt, context) {
-		var aHasBinds = stmtHasBinds(stmt.consequent)
-			bHasBinds = stmt.alternate && stmtHasBinds(stmt.alternate);
-
-		if ( aHasBinds || bHasBinds ) {
-
-			// If statement contains binds. Turn this into a conditional expression
-			// with monads on either side.
-			
-			var c = { type: 'ExpressionStatement', expression: genBind( gen.conditional(
-				stmt.test,
-				genMonad(stmt.consequent),
-				stmt.alternate ? genMonad(stmt.alternate) : gen.val(true)
-			) ) };
-
-			c = this.stmt(c, context);
-
-			return c;
-		}
-
-		// Doesn't contain binds, but may contain other monads
-		var oldMonad = context.monad;
-		context.monad = null;
-		
-		stmt = this.super.ifStmt(stmt, context);
-		
-		context.monad = oldMonad;
-
-		return stmt;
-	},
-
-	forInOfStmt: function (stmt, context) {
-
-		if ( !stmt.monadic && stmtHasBinds(stmt.body) ) {
-
-			// Body contains binds. Convert to a chain of 
-			// binds on a new monad block representing the body.
-			
-			var monad = genMonad(stmt.body);
-			var bodyClosure = gen.arrow([], monad);
-			var chain = gen.ident( context.temp() );
-
-			stmt.left.kind = 'let';
-			stmt.body = gen.assignStmt(
-				chain, gen.call(MONAD_BIND, [ chain, bodyClosure ])
-			)
-			stmt.monadic = true;
-
-			return gen.block(this.stmts([
-				gen.varDecl(chain, null),
-				stmt,
-				gen.exprStmt( genBind(chain) )
-			], context));
-		}
-
-		// Doesn't contain binds, but may contain other monads
-		var oldMonad = context.monad;
-		context.monad = null;
-		
-		stmt = this.super.forInOfStmt(stmt, context);
-		
-		context.monad = oldMonad;
-
-		return stmt;
-	},
-
-	func: function (stmt, context) {
-		// Inner functions have new context
-		var oldMonad = context.monad;
-		context.monad = null;
-		
-		stmt = this.super.func(stmt, context);
-		
-		context.monad = oldMonad;
-
-		return stmt;
-	},
-
-	unary: function (expr, context) {
-		if ( expr.operator === "<<" ) {
-			if (!context.monad) {
-				throw new Error('Unexpected "<<": not in monad block!');
-			}
-
-			return this._bind(expr.argument, context);
-		}
-		return this.super.unary(expr, context);
-	},
-
-	binary: function (expr, context) {
-		// Support short circuit evaluation
-		if ( !context.isInBind && expr.type === 'LogicalExpression') {
-			var bHasBinds = exprHasBinds(expr.right);
-
-			if ( bHasBinds ) {
-				expr.right = genMonadExpr(expr.right);
-				return this.expr(genBind(expr), context)
-			}
-		}
-
-		return this.super.binary(expr, context);
-	},
-
-	conditional: function (expr, context) {
-		if ( !context.isInBind ) {
-			var aHasBinds = exprHasBinds(expr.consequent)
-				bHasBinds = exprHasBinds(expr.alternate);
-
-			if ( aHasBinds || bHasBinds ) {
-
-				if ( aHasBinds ) expr.consequent = genMonadExpr(expr.consequent);
-				if ( bHasBinds ) expr.alternate = genMonadExpr(expr.alternate);
-
-				return this.expr(genBind(expr), context)
-			}
-		}
-
-		return this.super.conditional(expr, context);
-	},
-
-	stmt: function (stmt, context) {
-		var oldStmt = context.stmt;
-		context.stmt = {};
-
-		stmt = this.super.stmt(stmt, context);
-
-		if ( context.monad ) {
-			/*if ( context.stmt.hasBinds ) {
-
-			} else*/ if ( stmt.type != 'BlockStatement' ) {
-				context.monad.stmt(stmt);
-				stmt = {
-		            "type": "EmptyStatement"
-		        };
-			}
-		}
-
-		context.stmt = oldStmt;
-		return stmt;
-	},
-
-	monad: function (m, context) {
-		var lastMonad = context.monad;
-		var binds = [], stmts = [];
-		var monad = context.monad = {
-			bind: (expr) => {
-				var t = context.temp();
-				binds.push({
-					t: t,
-					expr: expr,
-					stmts: stmts
-				});
-				stmts = [];
-				return gen.ident(t);
-			},
-			stmt: stmt => stmts.push(stmt)
-		}
-
-
-		// Traverse to get all binds
-		m = this.super.monad(m, context);
-
-		var body = binds.reduceRight(
-			(s, b) => (gen.block(b.stmts.concat([
-				gen.ret( gen.call(MONAD_BIND, [
-					b.expr, gen.arrow([b.t], s)
-				]) )
-			]))),
-			
-			gen.block((m.body.body || []).concat(stmts))
-		)
-
-		context.monad = lastMonad;
-		context.ast.hasMonads = true;
-
-		return gen.closure([
-			body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
-		])
-	}
-})
-var MONAD_BIND = '__when';
-var MONAD_BIND_FN = gen.varDecl(MONAD_BIND, {
-    "type": "ArrowFunctionExpression",
-    "id": null,
-    "params": [
-        {
-            "type": "Identifier",
-            "name": "v"
-        },
-        {
-            "type": "Identifier",
-            "name": "n"
-        }
-    ],
-    "defaults": [],
-    "body": {
-        "type": "ConditionalExpression",
-        "test": {
-        	"type": "LogicalExpression",
-        	"operator": "&&",
-        	"left": gen.ident('v'),
-        	"right": {
-	            "type": "BinaryExpression",
-	            "operator": "==",
-	            "left": {
-	                "type": "UnaryExpression",
-	                "operator": "typeof",
-	                "argument": gen.member('v', 'then')
-	            },
-	            "right": gen.val("function")
-	        },
-	    },
-        "consequent": gen.call(
-        	gen.member('v', 'then'),
-        	[ "n" ]
-        ),
-        "alternate": gen.call("n", ["v"])
-    },
-    "rest": null,
-    "generator": false,
-    "expression": true
-})
-
-
-
 var ITER = '__iter';
 var ITER_FN = {
     "type": "FunctionDeclaration",
@@ -631,7 +233,7 @@ var cleanupTransformer = traverser({
 	// Remove pointless closures
 	// E.g. if closure has no args, and just immediately returns something.
 	callExpr: function (expr, context) {
-		if ( expr.callee.type == 'FunctionExpression' && expr.arguments.length == 0 ) {
+		if ( expr.callee.type == 'FunctionExpression' && expr.arguments.length == 0 && expr.callee.id == null ) {
 			if ( expr.callee.body.body.length == 0 ) {
 
 			} else if ( expr.callee.body.body[0].type == 'ReturnStatement' ) {
@@ -645,23 +247,14 @@ var cleanupTransformer = traverser({
 
 
 
-var 
-LEXICAL_THIS = '__this',
-SET_LEXICAL_THIS = {
-    "type": "VariableDeclaration",
-    "declarations": [
-    	gen.decl(LEXICAL_THIS, { "type": "ThisExpression" })
-    ],
-    "kind": "var"
-};
-
 
 var transformers = [
-	quasiTransformer,
-	monadTransformer,
+	require('./transformer/quasi'),
+	require('./transformer/monad'),
+	require('./transformer/generator'),
 	comprehensionTransformer,
 	forOfTransformer,
-	arrowTransformer,
+	require('./transformer/arrowFunc'),
 	arrayDestructuringTransformer,
 	forFilterTransformer,
 	insertIterTransformer,
@@ -671,7 +264,8 @@ var transformers = [
 	cleanupTransformer,
 	cleanupTransformer,
 
-	insertLexicalThisTransformer
+	require('./transformer/arrowFunc').insertLexicalThisTransformer,
+	require('./transformer/insertPrelude')
 ]
 
 module.exports = function (ast) {

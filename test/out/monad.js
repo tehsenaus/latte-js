@@ -1,9 +1,11 @@
+var __this = this;
+function __when(v, n) {
+    var __this = this;
+    return v && typeof v.then === 'function' ? v.then(n) : n(v);
+}
 function __iter(v, f) {
     v.forEach(f);
 }
-var __when = function (v, n) {
-    return v && typeof v.then == 'function' ? v.then(n) : n(v);
-};
 var should = require('should');
 var Q = require('q');
 describe('Monad Expression', function () {

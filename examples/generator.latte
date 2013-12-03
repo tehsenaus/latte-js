@@ -1,0 +1,12 @@
+function *gen(p) {
+	console.log('g');
+	var a = yield 1;
+	console.log('g2')
+	var b = yield 2;
+	console.log('G')
+}
+
+var g = gen();
+console.log('1:', g.next());
+console.log('2:', g.next());
+console.log('end:', g.next());

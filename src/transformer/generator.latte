@@ -1,0 +1,415 @@
+
+var traverser = require("../traverser"),
+	gen = require("../gen");
+
+var generatorTransformer = module.exports = traverser.explicit('generator', {
+	_yield: function (expr, context) {
+		context.stmt.hasYields = true;
+		
+		var oldIsInYield = context.isInYield;
+		context.isInYield = true
+
+		var bound = context.generator.yield(this.expr(expr, context));
+
+		context.isInYield = oldIsInYield;
+		return bound;
+	},
+
+	traverse: function (ast) {
+		ast = this.super.traverse(ast);
+		if ( ast.hasGenerators ) {
+			ast['requires generator prelude'] = true;
+		}
+		return ast;
+	},
+
+	ifStmt: function (stmt, context) {
+		var aHasYields = stmtHasYields(stmt.consequent)
+			bHasYields = stmt.alternate && stmtHasYields(stmt.alternate);
+
+		if ( aHasYields || bHasYields ) {
+
+			// There are yields in our branches. Save the current
+			// continuation, and call it with the result of the
+			// branch we take.
+
+			context.generator.withcc((cc) => {
+
+				return gen.ifStmt(
+					stmt.test, [
+						this.stmt(stmt.consequent, context),
+						cc( gen.ident('null') )
+					], [
+						stmt.alternate ? this.stmt(stmt.alternate, context) : gen.empty,
+						cc( gen.ident('null') )
+					]
+				);
+
+			});
+
+			return gen.empty;
+		}
+
+		// Doesn't contain yields, but may contain other generators
+		var oldGenerator = context.generator;
+		context.generator = null;
+		
+		stmt = this.super.ifStmt(stmt, context);
+		
+		context.generator = oldGenerator;
+
+		return stmt;
+	},
+
+	forInOfStmt: function (stmt, context) {
+
+		if ( !stmt.generatoric && stmtHasYields(stmt.body) ) {
+
+			// Body contains yields. Convert to a chain of 
+			// yields on a new generator block representing the body.
+			
+			var generator = genGenerator(stmt.body);
+			var bodyClosure = gen.arrow([], generator);
+			var chain = gen.ident( context.temp() );
+
+			stmt.left.kind = 'let';
+			stmt.body = gen.assignStmt(
+				chain, gen.call(YIELD, [ chain, bodyClosure ])
+			)
+			stmt.generatoric = true;
+
+			return gen.block(this.stmts([
+				gen.varDecl(chain, null),
+				stmt,
+				gen.exprStmt( genYield(chain) )
+			], context));
+		}
+
+		// Doesn't contain yields, but may contain other generators
+		var oldGenerator = context.generator;
+		context.generator = null;
+		
+		stmt = this.super.forInOfStmt(stmt, context);
+		
+		context.generator = oldGenerator;
+
+		return stmt;
+	},
+
+	forStmt: function (stmt, context) {
+		if ( !stmt.generatoric && stmtHasYields(stmt.body) ) {
+
+			throw new Error('Yields not supported in for statement... yet!');
+
+			// Body contains binds. Convert to a recursive
+			// closure
+			
+			var monad = genMonad(stmt.body);
+			var bodyClosure = gen.arrow([], monad);
+			var rec = context.temp();
+
+			stmt = gen.call(gen.fn([
+				// Do test, if pass, evaluate body and recurse
+				gen.ret(gen.conditional(
+					stmt.test,
+					gen.call(YIELD, [bodyClosure, rec]),
+					gen.ident('null')
+				))
+			]))
+			stmt.generatoric = true;
+
+			return gen.block(this.stmts([
+				gen.exprStmt( genBind(stmt) )
+			], context));
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.whileDoWhileStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+
+	whileDoWhileStmt: function (stmt, context) {
+		if ( !stmt.generatoric && stmtHasYields(stmt.body) ) {
+
+			// Body contains binds. Convert to a recursive
+			// closure
+			
+			var rec = context.temp();
+
+			stmt = gen.closure([
+				// Do test, if pass, evaluate body and recurse
+				gen.ifStmt(stmt.test, gen.block(stmt.body).body.concat([
+					gen.ret( gen.call(rec) )
+				]))
+			], [], rec)
+			stmt.callee.generatoric = true;
+
+			return gen.block(this.stmts([
+				gen.exprStmt( stmt )
+			], context));
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.whileDoWhileStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+
+	func: function (stmt, context) {
+		if (stmt.generatoric) {
+			var body = this.withGenerator(stmt, context, () => {
+				return this.super.func(stmt, context);
+			});
+
+			stmt.body = gen.block(body);
+
+			return stmt;
+		}
+		
+
+		// Inner functions have new context
+		var oldGenerator = context.generator;
+		context.generator = null;
+
+		stmt = this.super.func(stmt, context);
+		
+		context.generator = oldGenerator;
+
+		return stmt;
+	},
+
+	yieldExpr: function (expr, context) {
+		if (!context.generator) {
+			throw new Error('Unexpected yield: not in generator!');
+		}
+
+		return this._yield(expr.argument, context);
+	},
+
+	binary: function (expr, context) {
+		// Support short circuit evaluation
+		if ( !context.isInYield && expr.type === 'LogicalExpression') {
+			var bHasYields = exprHasYields(expr.right);
+
+			if ( bHasYields ) {
+				expr.right = genGeneratorExpr(expr.right);
+				return this.expr(genYield(expr), context)
+			}
+		}
+
+		return this.super.binary(expr, context);
+	},
+
+	conditional: function (expr, context) {
+		if ( !context.isInYield ) {
+			var aHasYields = exprHasYields(expr.consequent)
+				bHasYields = exprHasYields(expr.alternate);
+
+			if ( aHasYields || bHasYields ) {
+
+				// There are yields in our branches. Save the current
+				// continuation, and call it with the result of the
+				// branch we take.
+
+				return context.generator.withcc((cc) => {
+
+					return gen.ifStmt(
+						expr.test, [
+							cc( this.expr(expr.consequent, context) )
+						], [
+							cc( this.expr(expr.alternate, context) )
+						]
+					);
+
+				});
+
+				
+			}
+		}
+
+		return this.super.conditional(expr, context);
+	},
+
+	stmt: function (stmt, context) {
+		var oldStmt = context.stmt;
+		context.stmt = {};
+
+		stmt = this.super.stmt(stmt, context);
+
+		if ( context.generator ) {
+			/*if ( context.stmt.hasYields ) {
+
+			} else*/ if ( stmt.type != 'BlockStatement' ) {
+				context.generator.stmt(stmt);
+				stmt = gen.empty;
+			}
+		}
+
+		context.stmt = oldStmt;
+		return stmt;
+	},
+
+	withGenerator: function (m, context, fn) {
+		var lastGenerator = context.generator;
+		var yields = [],
+			stmts = [];
+		var generator = context.generator = {
+
+			// signals that the next block of statements needs to be
+			// extracted as a named continuation (i.e. if there are branches
+			// which need to merge).
+			//
+			// The value of the current expression (if applicable)
+			// is passed as 'ccv'
+			withcc: (fn) => {
+				var pre = stmts,
+					cc = context.temp(),
+					ccv = context.temp();
+
+				stmts = [];
+				stmt = fn((v) => generator.callc(cc, v));
+				stmts = pre;
+				pre.push(gen.block(stmt));
+
+				return ccv;
+			},
+
+			// Evaluate yields in sequence, then call the passed continuation
+			// with the specified value expression
+			callc: (c, v) => {
+				console.log('callc', c, v);
+
+				var r = c.type == 'BlockStatement' ? c : gen.call(c, [v]);
+
+				r = yields.reduceRight(
+					(s, y) => gen.block( y.stmts.concat([
+
+						gen.ret(gen.call(YIELD, [
+							y.expr, gen.arrow([y.e, y.t], s)
+						]))
+					]) ),
+					
+					r
+				)
+
+				yields = [];
+
+				return r.type == 'CallExpression' ? gen.ret(r) : r;
+			},
+
+			yield: (expr) => {
+				var e = 'e', //context.temp(),
+					t = context.temp();
+
+				console.log('yield', expr, stmts)
+
+				yields.push({
+					e: e, t: t,
+					expr: expr,
+					stmts: stmts
+				});
+				stmts = [];
+				cc = null;
+				return gen.ident(t);
+			},
+			stmt: stmt => stmts.push(stmt)
+		}
+
+		// Traverse
+		m = fn();
+
+		context.generator = lastGenerator;
+		context.ast.hasGenerators = true;
+
+		return generator.callc(gen.block(stmts.concat([
+			{
+				type: 'ThrowStatement',
+				argument: gen.ident('StopIteration')
+			}
+		])));
+	},
+
+	generator: function (m, context) {
+		var body = this.withGenerator(m, context, () => {
+			console.log('gen');
+			// Traverse to get all yields
+			return this.super.generator(m, context);
+		})
+
+
+		m.body.body = [ gen.ret(
+			gen.call('__gen', [ gen.fn([
+				body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
+			], ['__yield','__stop']) ]) 
+		)];
+		m.generator = false;
+
+		console.log('gen done');
+
+		console.log(m);
+		return m;
+	}
+})
+
+
+var hasYieldsTraverser = traverser({
+	exprHasYields: function (expr) {
+		var context = this.context();
+		this.expr(expr, context);
+		return context.hasYields;
+	},
+
+	stmtHasYields: function (stmt) {
+		var context = this.context();
+		this.stmt(stmt, context);
+		return context.hasYields;
+	},
+
+	yieldExpr: function (e, context) {
+		context.hasYields = true;
+		return this.super.yieldExpr(e, context);
+	},
+
+	generator: function () {
+		// We stop here: yields are local
+	}
+});
+function exprHasYields(expr) {
+	return hasYieldsTraverser.exprHasYields(expr);
+}
+function stmtHasYields(stmt) {
+	return hasYieldsTraverser.stmtHasYields(stmt);
+}
+
+function genYield(expr) {
+	return {
+		type: 'YieldExpression',
+		argument: expr
+	}
+}
+function genGenerator(stmts) {
+	return gen.call({
+		type: 'FunctionExpression',
+		params: [],
+        defaults: [],
+		body: gen.block( stmts ),
+		generator: true
+	})
+}
+function genGeneratorExpr(expr) {
+	return genGenerator(genYield(expr));
+}
+
+
+var YIELD = '__yield';

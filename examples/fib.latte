@@ -1,0 +1,20 @@
+function* fibonacci() {
+    let [prev, curr] = [0, 1];
+    while (true) {
+        prev = curr;
+        curr = prev + curr;
+        yield curr;
+    }
+}
+
+var fib = fibonacci();
+for(var i = 0; i < 10; i++) {
+	console.log(fib.next());
+}
+
+// for (n of fibonacci()) {
+//     // truncate the sequence at 1000
+//     if (n > 1000)
+//         break;
+//     console.log(n);
+// }
