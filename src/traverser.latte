@@ -9,6 +9,7 @@ function traverser(args) {
 		return {
 			scopes: [],
 			blocks: [],
+			stmts: [],
 
 			enterScope: function (node) {
 				var scope = this.enterBlock(node),
@@ -72,62 +73,67 @@ function traverser(args) {
 
 	me.stmt = (stmt, context) => {
 		if (!stmt) return stmt;
-		switch (stmt.type) {
-			case 'BlockStatement':
-				return me.block(stmt, context);
+		context.stmts.unshift(stmt);
+		try {
+			switch (stmt.type) {
+				case 'BlockStatement':
+					return me.block(stmt, context);
 
-			case 'VariableDeclaration':
-				return me.varDecl(stmt, context);
+				case 'VariableDeclaration':
+					return me.varDecl(stmt, context);
 
-			case 'FunctionDeclaration':
-				return me.funcDecl(stmt, context);
+				case 'FunctionDeclaration':
+					return me.funcDecl(stmt, context);
 
-			case 'ExpressionStatement':
-		        stmt.expression = me.expr(stmt.expression, context);
-		        return stmt;
+				case 'ExpressionStatement':
+			        stmt.expression = me.expr(stmt.expression, context);
+			        return stmt;
 
-		    case 'IfStatement': 
-		    	return me.ifStmt(stmt, context)
+			    case 'IfStatement': 
+			    	return me.ifStmt(stmt, context)
 
-		    case 'ForStatement': 
-		    	return me.forStmt(stmt, context)
-		    case 'ForInStatement':
-		    	return me.forInStmt(stmt, context)
-		    case 'ForOfStatement':
-		    	return me.forOfStmt(stmt, context)
+			    case 'ForStatement': 
+			    	return me.forStmt(stmt, context)
+			    case 'ForInStatement':
+			    	return me.forInStmt(stmt, context)
+			    case 'ForOfStatement':
+			    	return me.forOfStmt(stmt, context)
 
-		    case 'WhileStatement':
-		    case 'DoWhileStatement':
-		    	return me.whileDoWhileStmt(stmt, context)
+			    case 'WhileStatement':
+			    case 'DoWhileStatement':
+			    	return me.whileDoWhileStmt(stmt, context)
 
-		    case 'SwitchStatement':
-		    	return me.switchStmt(stmt, context)
+			    case 'SwitchStatement':
+			    	return me.switchStmt(stmt, context)
 
-		    case 'ReturnStatement':
-		    case 'ThrowStatement':
-		    	return {
-		    		type: stmt.type,
-		    		argument: me.expr(stmt.argument, context)
-		    	}
+			    case 'ReturnStatement':
+			    case 'ThrowStatement':
+			    	return {
+			    		type: stmt.type,
+			    		argument: me.expr(stmt.argument, context)
+			    	}
 
-		    case 'TryStatement':
-		    	return me.tryStmt(stmt, context)
+			    case 'TryStatement':
+			    	return me.tryStmt(stmt, context)
 
-		    case 'BreakStatement':
-		    case 'EmptyStatement':
-		    	break;
+			    case 'BreakStatement':
+			    case 'EmptyStatement':
+			    	break;
 
-		    case undefined:
-		    	throw new Error("Fatal: Stmt type is undefined! In: " + util.inspect(stmt));
+			    case undefined:
+			    	throw new Error("Fatal: Stmt type is undefined! In: " + util.inspect(stmt));
 
-			default:
-				console.log("Unhandled stmt: ", stmt.type);
+				default:
+					console.log("Unhandled stmt: ", stmt.type);
+			}
+			return stmt;
+		} finally {
+			context.stmts.shift();
 		}
-		return stmt;
 	}
 
 	me.block = (stmt, context) => {
-		return context.block(stmt, context => {
+		return context.block(context.stmts[1], context => {
 			stmt.body = me.stmts(stmt.body, context);
 			return stmt;
 		});
@@ -258,7 +264,7 @@ function traverser(args) {
 		    case 'Literal':
 		    	break;
 			default:
-				throw new Error("Unhandled expr: ", expr);
+				throw new Error("Unhandled expr: " + expr);
 		}
 		return expr;
 	}

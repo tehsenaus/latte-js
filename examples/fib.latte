@@ -1,16 +1,37 @@
 function* fibonacci() {
     let [prev, curr] = [0, 1];
-    while (true) {
+    do {
+    	yield prev;
+    	var next = prev + curr;
         prev = curr;
-        curr = prev + curr;
-        yield curr;
-    }
+        curr = next;
+    } while (true)
 }
 
 var fib = fibonacci();
 for(var i = 0; i < 10; i++) {
 	console.log(fib.next());
 }
+
+
+
+
+var Q = require("q");
+
+function wait(x) {
+	var d = Q.defer();
+	setTimeout(() => d.resolve(), x);
+	return d.promise;
+}
+
+var fib = fibonacci();
+do {
+	while (true) {
+		console.log(fib.next());
+		<< wait(1000);
+	}
+}
+
 
 // for (n of fibonacci()) {
 //     // truncate the sequence at 1000

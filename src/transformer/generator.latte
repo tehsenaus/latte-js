@@ -4,8 +4,6 @@ var traverser = require("../traverser"),
 
 var generatorTransformer = module.exports = traverser.explicit('generator', {
 	_yield: function (expr, context) {
-		context.stmt.hasYields = true;
-		
 		var oldIsInYield = context.isInYield;
 		context.isInYield = true
 
@@ -64,25 +62,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 	forInOfStmt: function (stmt, context) {
 
 		if ( !stmt.generatoric && stmtHasYields(stmt.body) ) {
-
-			// Body contains yields. Convert to a chain of 
-			// yields on a new generator block representing the body.
-			
-			var generator = genGenerator(stmt.body);
-			var bodyClosure = gen.arrow([], generator);
-			var chain = gen.ident( context.temp() );
-
-			stmt.left.kind = 'let';
-			stmt.body = gen.assignStmt(
-				chain, gen.call(YIELD, [ chain, bodyClosure ])
-			)
-			stmt.generatoric = true;
-
-			return gen.block(this.stmts([
-				gen.varDecl(chain, null),
-				stmt,
-				gen.exprStmt( genYield(chain) )
-			], context));
+			throw new Error('Yields not supported in for statement... yet!');
 		}
 
 		// Doesn't contain yields, but may contain other generators
@@ -101,83 +81,104 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 			throw new Error('Yields not supported in for statement... yet!');
 
-			// Body contains binds. Convert to a recursive
-			// closure
 			
-			var monad = genMonad(stmt.body);
-			var bodyClosure = gen.arrow([], monad);
-			var rec = context.temp();
-
-			stmt = gen.call(gen.fn([
-				// Do test, if pass, evaluate body and recurse
-				gen.ret(gen.conditional(
-					stmt.test,
-					gen.call(YIELD, [bodyClosure, rec]),
-					gen.ident('null')
-				))
-			]))
-			stmt.generatoric = true;
-
-			return gen.block(this.stmts([
-				gen.exprStmt( genBind(stmt) )
-			], context));
 		}
 
 		// Doesn't contain binds, but may contain other monads
-		var oldMonad = context.monad;
-		context.monad = null;
+		var old = context.generator;
+		context.generator = null;
 		
-		stmt = this.super.whileDoWhileStmt(stmt, context);
+		stmt = this.super.forStmt(stmt, context);
 		
-		context.monad = oldMonad;
+		context.generator = old;
 
 		return stmt;
 	},
 
 	whileDoWhileStmt: function (stmt, context) {
-		if ( !stmt.generatoric && stmtHasYields(stmt.body) ) {
+		if ( context.generator && stmtHasYields(stmt.body) ) {
 
 			// Body contains binds. Convert to a recursive
 			// closure
 			
 			var rec = context.temp();
 
-			stmt = gen.closure([
-				// Do test, if pass, evaluate body and recurse
-				gen.ifStmt(stmt.test, gen.block(stmt.body).body.concat([
-					gen.ret( gen.call(rec) )
-				]))
-			], [], rec)
-			stmt.callee.generatoric = true;
+			if ( stmt.type == 'DoWhileStatement' ) {
+				stmt = gen.block(stmt.body).body.concat([
+					// Do test, if pass, recurse
+					gen.ifStmt( stmt.test, gen.ret(gen.call(rec)) )
+				]);
+			} else {
+				stmt = [
+					// Do test, if pass, evaluate body and recurse
+					gen.ifStmt(stmt.test, gen.block(stmt.body).body.concat([
+						gen.ret( gen.call(rec) )
+					]))
+				];
+			}
+
+			stmt = gen.closure(stmt, [], rec);
+			stmt.callee.generator = true;
+			stmt.callee.internalGenerator = context.generator;
 
 			return gen.block(this.stmts([
 				gen.exprStmt( stmt )
 			], context));
 		}
 
-		// Doesn't contain binds, but may contain other monads
+		// Doesn't contain yields, but may contain other generators
 		var oldMonad = context.monad;
-		context.monad = null;
+		context.generator = null;
 		
 		stmt = this.super.whileDoWhileStmt(stmt, context);
 		
-		context.monad = oldMonad;
+		context.generator = oldMonad;
+
+		return stmt;
+	},
+
+	switchStmt: function (stmt, context) {
+		if ( stmtHasYields(stmt) ) {
+			throw new Error('Yields not supported in switch statement... yet!');
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var old = context.generator;
+		context.generator = null;
+		
+		stmt = this.super.switchStmt(stmt, context);
+		
+		context.generator = old;
+
+		return stmt;
+	},
+	tryStmt: function (stmt, context) {
+		if ( stmtHasYields(stmt) ) {
+			throw new Error('Yields not supported in try statement... yet!');
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var old = context.generator;
+		context.generator = null;
+		
+		stmt = this.super.tryStmt(stmt, context);
+		
+		context.generator = old;
 
 		return stmt;
 	},
 
 	func: function (stmt, context) {
-		if (stmt.generatoric) {
-			var body = this.withGenerator(stmt, context, () => {
-				return this.super.func(stmt, context);
-			});
+		// if (stmt.generatoric) {
+		// 	var body = this.withGenerator(stmt, context, () => {
+		// 		return this.super.func(stmt, context);
+		// 	});
 
-			stmt.body = gen.block(body);
+		// 	stmt.body = gen.block(body);
 
-			return stmt;
-		}
+		// 	return stmt;
+		// }
 		
-
 		// Inner functions have new context
 		var oldGenerator = context.generator;
 		context.generator = null;
@@ -185,7 +186,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		stmt = this.super.func(stmt, context);
 		
 		context.generator = oldGenerator;
-
+			
 		return stmt;
 	},
 
@@ -203,8 +204,22 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 			var bHasYields = exprHasYields(expr.right);
 
 			if ( bHasYields ) {
-				expr.right = genGeneratorExpr(expr.right);
-				return this.expr(genYield(expr), context)
+				
+				var test = gen.ident(context.temp());
+				this.stmt( gen.varDecl(test, expr.left), context );
+
+				return context.generator.withcc((cc) => {
+
+					return gen.ifStmt(
+						expr.operator == '||' ? gen.not(test) : test, [
+							cc( this.expr(expr.right, context) )
+						], [
+							cc( test )
+						]
+					);
+
+				});
+
 			}
 		}
 
@@ -241,29 +256,83 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		return this.super.conditional(expr, context);
 	},
 
+
+	callExpr: function (expr, context) {
+		if ( expr.callee.generator && expr.callee.internalGenerator
+			&& expr.callee.body.body[0].type == 'ReturnStatement' ) {
+
+			var m = expr.callee;
+
+			return m.internalGenerator.withcc(cc => {
+
+				// Call the current continuation with the value of the
+				// generator expression.
+				m.body = cc( expr.callee.body.body[0].argument );
+
+				expr = this.super.callExpr(expr, context);
+
+				//console.log('callExpr', m.body.body.map(dbg));
+
+				return gen.exprStmt(expr);
+			});
+		}
+
+		return this.super.callExpr(expr, context);
+	},
+
 	stmt: function (stmt, context) {
-		var oldStmt = context.stmt;
-		context.stmt = {};
+
+		if ( stmt.type == 'ExpressionStatement' ) {
+
+			// Yield statement - not using value, so avoid adding
+			// useless expressionstmt
+			if ( stmt.expression.type == 'YieldExpression' ) {
+				return this.super.stmt(stmt, context);
+			}
+
+			// Calling an internal generator
+			if ( stmt.expression.type == 'CallExpression'
+					&& stmt.expression.callee.generator
+					&& stmt.expression.callee.internalGenerator ) {
+
+				var m = stmt.expression.callee;
+
+				m.internalGenerator.withcc(cc => {
+					// Call our continuation at end of internal generator
+					m.body.body.push(cc());
+
+					stmt.expression.callee = this.expr(stmt.expression.callee, context);
+
+					return gen.ret(stmt.expression);
+				});
+
+				return gen.empty;
+			}
+		}
+				
 
 		stmt = this.super.stmt(stmt, context);
 
 		if ( context.generator ) {
-			/*if ( context.stmt.hasYields ) {
-
-			} else*/ if ( stmt.type != 'BlockStatement' ) {
+			if ( stmt.type != 'BlockStatement' ) {
 				context.generator.stmt(stmt);
 				stmt = gen.empty;
 			}
 		}
 
-		context.stmt = oldStmt;
 		return stmt;
 	},
+
+
 
 	withGenerator: function (m, context, fn) {
 		var lastGenerator = context.generator;
 		var yields = [],
-			stmts = [];
+			stmts = [],
+			continuations = [],
+			body = [],
+			topLevelBody = body;
+
 		var generator = context.generator = {
 
 			// signals that the next block of statements needs to be
@@ -271,26 +340,47 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 			// which need to merge).
 			//
 			// The value of the current expression (if applicable)
-			// is passed as 'ccv'
+			// is passed as 'ccv'. This is a parameter to the continuation.
 			withcc: (fn) => {
 				var pre = stmts,
+					preYields = yields,
 					cc = context.temp(),
 					ccv = context.temp();
 
-				stmts = [];
-				stmt = fn((v) => generator.callc(cc, v));
-				stmts = pre;
-				pre.push(gen.block(stmt));
+				yields = []; stmts = [];
 
-				return ccv;
+				stmt = fn((v) => generator.callc(cc, v));
+
+				yields = preYields; stmts = pre;
+				generator.stmt(stmt);
+
+				var r = generator.callc(gen.block([]));
+				body.push(r);
+
+				var continuation = gen.fndecl(
+					[], [ccv], cc
+				);
+				body = continuation.body.body;
+				stmts = [];
+				continuations.push(continuation);
+
+				return gen.ident(ccv);
 			},
 
 			// Evaluate yields in sequence, then call the passed continuation
 			// with the specified value expression
 			callc: (c, v) => {
-				console.log('callc', c, v);
+				var r = c.type == 'BlockStatement' ? c : gen.call(c, v ? [v] : []);
 
-				var r = c.type == 'BlockStatement' ? c : gen.call(c, [v]);
+				// Anything else to do before we call?
+				if ( stmts.length ) {
+					if ( r.type == 'CallExpression' ) {
+						r = gen.block([ gen.ret(r) ])
+					}
+
+					r.body = stmts.concat(r.body);
+					stmts = [];
+				}
 
 				r = yields.reduceRight(
 					(s, y) => gen.block( y.stmts.concat([
@@ -305,14 +395,12 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 				yields = [];
 
-				return r.type == 'CallExpression' ? gen.ret(r) : r;
+				return r.type == 'CallExpression' ? gen.block([gen.ret(r)]) : r;
 			},
 
 			yield: (expr) => {
 				var e = 'e', //context.temp(),
 					t = context.temp();
-
-				console.log('yield', expr, stmts)
 
 				yields.push({
 					e: e, t: t,
@@ -323,6 +411,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 				cc = null;
 				return gen.ident(t);
 			},
+
 			stmt: stmt => stmts.push(stmt)
 		}
 
@@ -332,32 +421,36 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		context.generator = lastGenerator;
 		context.ast.hasGenerators = true;
 
-		return generator.callc(gen.block(stmts.concat([
-			{
-				type: 'ThrowStatement',
-				argument: gen.ident('StopIteration')
-			}
-		])));
+		body.push(generator.callc(gen.block([])));
+		return gen.block( topLevelBody.concat(continuations) );
 	},
 
 	generator: function (m, context) {
-		var body = this.withGenerator(m, context, () => {
-			console.log('gen');
-			// Traverse to get all yields
-			return this.super.generator(m, context);
-		})
 
+		if ( m.internalGenerator ) {
+			
+			m.body = this.withGenerator(m, context, () => {
+				return this.super.generator(m, context);
+			});
 
-		m.body.body = [ gen.ret(
-			gen.call('__gen', [ gen.fn([
-				body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
-			], ['__yield','__stop']) ]) 
-		)];
+		} else {
+
+			m.body.body.push(gen.exprStmt(gen.call('__stop')));
+
+			var body = this.withGenerator(m, context, () => {
+				// Traverse to get all yields
+				return this.super.generator(m, context);
+			})
+
+			m.body.body = [ gen.ret(
+				gen.call('__gen', [ gen.fn([
+					body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
+				], ['__yield','__stop']) ]) 
+			)];
+		}
+
 		m.generator = false;
 
-		console.log('gen done');
-
-		console.log(m);
 		return m;
 	}
 })
@@ -381,8 +474,9 @@ var hasYieldsTraverser = traverser({
 		return this.super.yieldExpr(e, context);
 	},
 
-	generator: function () {
+	generator: function (g) {
 		// We stop here: yields are local
+		return g;
 	}
 });
 function exprHasYields(expr) {
@@ -407,9 +501,20 @@ function genGenerator(stmts) {
 		generator: true
 	})
 }
-function genGeneratorExpr(expr) {
-	return genGenerator(genYield(expr));
+function genGeneratorExpr(expr, context) {
+	var r = gen.closure([ gen.ret(expr) ]);
+	r.callee.generator = true;
+	r.callee.internalGenerator = context.generator;
+	return r;
 }
 
 
 var YIELD = '__yield';
+
+function dbg(v) {
+	try {
+		return require("escodegen").generate(v);
+	} catch (e) {
+		return v;
+	}
+}

@@ -9,7 +9,7 @@ var compiler = require("../lib/compiler"),
 
 var optimist = require('optimist')
 	.usage('Latte.js compiler.\nUsage: latte [options] [--] files...')
-    .boolean(['c', 'v', 'd', 'version'])
+    .boolean(['c', 'v', 'd', 'version', 'debug'])
     .alias('c', 'compile')
     .alias('o', 'output')
     .alias('v', 'verbose')
@@ -32,7 +32,8 @@ if ( argv.help ) {
 }
 
 var compilerOptions = {
-	outputDir: argv.o
+	outputDir: argv.o,
+	debug: argv.debug
 };
 
 if ( !files.length ) {

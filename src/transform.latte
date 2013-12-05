@@ -33,7 +33,7 @@ var letTransformer = traverser({
 
 		if ( d.kind == 'let' ) {
 			d.kind = 'var';
-			context.blocks[0].node.requiresBlockScope = true;
+			context.blocks[0].node.body.requiresBlockScope = true;
 		}
 
 		return d;
@@ -63,7 +63,7 @@ var letTransformer = traverser({
 	block: function (b, context) {
 		var block = this.super.block(b, context);
 
-		if ( b.requiresBlockScope ) {
+		if ( b.requiresBlockScope && context.stmts[1].type.indexOf('Function') < 0 ) {
 			b.body = [ {
             	"type": "ExpressionStatement",
             	"expression": gen.closure(b.body, b.blockScopeParams) 

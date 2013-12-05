@@ -162,6 +162,37 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 		return stmt;
 	},
 
+	switchStmt: function (stmt, context) {
+		if ( !stmt.monadic && stmtHasBinds(stmt) ) {
+			throw new Error('Monadic binds not supported in switch statement... yet!');
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.switchStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+	tryStmt: function (stmt, context) {
+		if ( !stmt.monadic && stmtHasBinds(stmt) ) {
+			throw new Error('Monadic binds not supported in try statement... yet!');
+		}
+
+		// Doesn't contain binds, but may contain other monads
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.tryStmt(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+
 	func: function (stmt, context) {
 		// Inner functions have new context
 		var oldMonad = context.monad;
@@ -298,8 +329,9 @@ var hasBindsTraverser = traverser({
 		return this.super.unary(expr, context);
 	},
 
-	monad: function () {
+	monad: function (m) {
 		// We stop here: binds are local
+		return m;
 	}
 });
 function exprHasBinds(expr) {

@@ -84,6 +84,18 @@ module.exports = {
             "expression": false
         }
 	},
+	fndecl: function (stmts, params, id) {
+		return {
+            "type": "FunctionDeclaration",
+            "id": id && this.ident(id),
+            "params": params.map(p => this.ident(p)),
+            "defaults": [],
+            "body": this.block(stmts),
+            "rest": null,
+            "generator": false,
+            "expression": false
+        }
+	},
 	call: function (callee, args) {
 		return {
             "type": "CallExpression",
@@ -134,6 +146,14 @@ module.exports = {
             "property": typeof property == "object" ? property : (
             	options && options.computed ? this.val(property) : this.ident(property)
             )
+        }
+	},
+
+	not: function (expr) {
+		return {
+            "type": "UnaryExpression",
+            "operator": "!",
+            "argument": expr
         }
 	},
 

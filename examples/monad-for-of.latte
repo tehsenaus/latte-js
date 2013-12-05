@@ -6,13 +6,17 @@ function async(x) {
 	return d.promise;
 }
 
-do {
-	var x = "";
-	
-	for ( var i of ['a', 'b'] ) {
-		console.log(x);
-		x += << async(i);
-	}
+switch (1) {
+	case 1:
+		(do {
+			var x = "";
+				
+			for ( var i of ['a', 'b'] ) {
+				console.log(x);
+				x += << async(i);
+			}
 
-	console.log(x);
+			console.log(x);
+		}).done();
 }
+

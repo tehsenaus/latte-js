@@ -1,0 +1,16 @@
+
+(function () {
+	var a = [10, 20],
+		r = 0;
+
+	for ( var i in a ) {
+		let x = a[i];
+		process.nextTick(function () {
+			r += x;
+		})
+	}
+
+	process.nextTick(function () {
+		console.log(r);
+	});
+});
