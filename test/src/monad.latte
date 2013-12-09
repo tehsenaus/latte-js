@@ -127,5 +127,21 @@ describe('Monad Expression', function () {
 			done();
 		}
 	})
+
+	it('preserves lexical this', function (done) {
+		(function () {
+			do {
+				(<< async(this.m)).should.equal('hello');
+				done();
+			}
+		}).call({ m: 'hello' })
+	})
+
+	it('allows inner functions', function (done) {
+		do {
+			(<< async(['hello'])).map(x => x).join('').should.equal('hello');
+			done();
+		}
+	})
 	
 })

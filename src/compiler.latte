@@ -86,7 +86,9 @@ compiler.files = function (options) {
 
 				compiler.pipe(fs.createWriteStream(
 					outputPath
-				));
+				).on('error', function (e) {
+					cb(file + ': ' + e);
+				}));
 			});
 		}),
 		es.join('\n')
@@ -138,10 +140,15 @@ function compileDir(inputDir, outputDir, options) {
 	var fileCompiler = compiler.files(options);
 
 	glob(inputDir + '**/*.latte', function (err, files) {
-		files.forEach(file => {
-			var name = file.slice(inputDir.length);
-			fileCompiler.write(name + '\n');
-		})
+		if ( err ) {
+			fileCompiler.emit('error', err);
+		} else {
+			files.forEach(file => {
+				var name = file.slice(inputDir.length);
+				fileCompiler.write(name + '\n');
+			})
+		}
+
 		fileCompiler.end();
 	});
 

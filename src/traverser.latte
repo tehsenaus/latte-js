@@ -12,11 +12,10 @@ function traverser(args) {
 			stmts: [],
 
 			enterScope: function (node) {
-				var scope = this.enterBlock(node),
-					temp = this.scopes.length ? this.scopes[0].ctemp() : 0;
+				var scope = this.enterBlock(node.body, node);
 				
-				scope.ctemp = () => temp;
-				scope.temp = () => "__t" + temp++;
+				scope.ctemp = () => this.ast.ctemp;
+				scope.temp = () => "__t" + this.ast.ctemp++;
 
 				this.scopes.unshift(scope);
 				return scope;
@@ -31,8 +30,9 @@ function traverser(args) {
 				finally { this.exitScope(); };
 			},
 
-			enterBlock: function (node) {
+			enterBlock: function (block, node) {
 				var block = {
+					block: block,
 					node: node
 				}
 				this.blocks.unshift(block);
@@ -41,8 +41,9 @@ function traverser(args) {
 			exitBlock: function () {
 				this.blocks.shift();
 			},
-			block: function (node, fn) {
-				this.enterBlock(node);
+			
+			block: function (block, node, fn) {
+				this.enterBlock(block, node);
 				try { return fn(this); }
 				finally { this.exitBlock(); };
 			},
@@ -52,8 +53,8 @@ function traverser(args) {
 			},
 
 			// Allocate a temp in the nearest scope
-			temp: function () {
-				return this.scopes[0].temp();
+			temp: function (n) {
+				return this.scopes[0].temp(n);
 			}
 		}
 	}
@@ -61,6 +62,7 @@ function traverser(args) {
 	me.traverse = (ast) => {
 		var context = me.context();
 		context.ast = ast;
+		ast.ctemp = ast.ctemp || 0;
 		return context.scope(ast, context => {
 			ast.body = me.stmts(ast.body, context);
 			return ast;
@@ -69,6 +71,9 @@ function traverser(args) {
 
 	me.stmts = (stmts, context) => {
 		return flatten(stmts.map(stmt => me.stmt(stmt, context)));
+	}
+	me.blockStmts = (stmts, context) => {
+		return flatten(stmts.map(stmt => me.blockStmt(stmt, context)));
 	}
 
 	me.stmt = (stmt, context) => {
@@ -117,6 +122,7 @@ function traverser(args) {
 			    	return me.tryStmt(stmt, context)
 
 			    case 'BreakStatement':
+			    case 'ContinueStatement':
 			    case 'EmptyStatement':
 			    	break;
 
@@ -130,11 +136,12 @@ function traverser(args) {
 		} finally {
 			context.stmts.shift();
 		}
-	}
+	};
+	me.blockStmt = (stmt, context) => me.stmt(stmt, context);
 
 	me.block = (stmt, context) => {
-		return context.block(context.stmts[1], context => {
-			stmt.body = me.stmts(stmt.body, context);
+		return context.block(stmt, context.stmts[1], context => {
+			stmt.body = me.blockStmts(stmt.body, context);
 			return stmt;
 		});
 	}
@@ -285,7 +292,7 @@ function traverser(args) {
 				return me.generator(fn, context)
 			}
 
-			fn.body.body = me.stmts(fn.body.body, context);
+			fn.body = me.stmt(fn.body, context);
 			return fn;
 		}
 

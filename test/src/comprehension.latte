@@ -33,4 +33,26 @@ describe('Array Comprehension', function () {
 		[pre + k with pre = 'Hello ' for (k in a)].join(', ')
 			.should.equal('Hello x, Hello y');
 	})
+
+	it('enumerates an array with of', function () {
+		var a = [10, 20];
+		[x for (x of a)].should.eql(a);
+	})
+
+	it('enumerates two arrays with of', function () {
+		var a = [10, 20],
+			b = [1,2];
+		[i + j for (i of a) for (j of b)].should.eql([ 11, 12, 21, 22 ]);
+	})
+
+	it('uses local variable binding scope', function (done) {
+		var a = [10, 20],
+			r = 0;
+		[process.nextTick(() => r += x) for (x of a)];
+
+		process.nextTick(() => {
+			r.should.equal(30);
+			done();
+		});
+	})
 })

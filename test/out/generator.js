@@ -1,26 +1,20 @@
-var __this = this;
 if (typeof StopIteration === 'undefined') {
     var StopIteration = 'StopIteration';
 }
 function __gen(fn) {
-    var __this = this;
     var closed, born;
     return {
         next: function () {
-            var __this = this;
             return this.send();
         },
         send: function (v) {
-            var __this = this;
             if (closed)
                 throw new Error('generator is closed!');
             if (!born) {
                 var v = fn(function __yield(v, next) {
-                        var __this = this;
                         fn = next;
                         return v;
                     }, function __stop() {
-                        var __this = this;
                         closed = true;
                         throw StopIteration;
                     });
@@ -30,7 +24,6 @@ function __gen(fn) {
             return fn(null, v);
         },
         'throw': function (e) {
-            var __this = this;
             if (closed)
                 throw new Error('generator is closed!');
             if (!born) {
@@ -56,9 +49,9 @@ describe('Generators', function () {
     it('can accept values on yield', function () {
         function g() {
             return __gen(function (__yield, __stop) {
-                return __yield(42, function (e, __t0) {
-                    __t0.should.equal('hello');
-                    return __yield('bye', function (e, __t1) {
+                return __yield(42, function (e, __t1) {
+                    __t1.should.equal('hello');
+                    return __yield('bye', function (e, __t2) {
                         __stop();
                     });
                 });
@@ -72,16 +65,16 @@ describe('Generators', function () {
         function g() {
             return __gen(function (__yield, __stop) {
                 if (true) {
-                    return __yield('Meee', function (e, __t2) {
-                        return __t0(__t2);
+                    return __yield('Meee', function (e, __t5) {
+                        return __t3(__t5);
                     });
                 } else {
-                    return __t0('You');
+                    return __t3('You');
                 }
-                function __t0(__t1) {
-                    var x = __t1;
+                function __t3(__t4) {
+                    var x = __t4;
                     x.should.equal('Meee');
-                    return __yield('bye', function (e, __t3) {
+                    return __yield('bye', function (e, __t6) {
                         __stop();
                     });
                 }
@@ -97,17 +90,17 @@ describe('Generators', function () {
         function g() {
             return __gen(function (__yield, __stop) {
                 if (false) {
-                    return __yield('Meee', function (e, __t2) {
-                        return __t0(__t2);
+                    return __yield('Meee', function (e, __t9) {
+                        return __t7(__t9);
                     });
                 } else {
-                    return __t0('You');
+                    return __t7('You');
                 }
-                function __t0(__t1) {
-                    var x = __t1;
+                function __t7(__t8) {
+                    var x = __t8;
                     x.should.equal('You');
                     yielded.should.equal(false);
-                    return __yield('bye', function (e, __t3) {
+                    return __yield('bye', function (e, __t10) {
                         __stop();
                     });
                 }
@@ -120,18 +113,18 @@ describe('Generators', function () {
     it('works with logical expression', function () {
         function g() {
             return __gen(function (__yield, __stop) {
-                var __t0 = true;
-                if (__t0) {
-                    return __yield('Meee', function (e, __t3) {
-                        return __t1(__t3);
+                var __t11 = true;
+                if (__t11) {
+                    return __yield('Meee', function (e, __t14) {
+                        return __t12(__t14);
                     });
                 } else {
-                    return __t1(__t0);
+                    return __t12(__t11);
                 }
-                function __t1(__t2) {
-                    var x = __t2;
+                function __t12(__t13) {
+                    var x = __t13;
                     x.should.equal('Meee');
-                    return __yield('bye', function (e, __t4) {
+                    return __yield('bye', function (e, __t15) {
                         __stop();
                     });
                 }
@@ -146,19 +139,19 @@ describe('Generators', function () {
         var yielded = false;
         function g() {
             return __gen(function (__yield, __stop) {
-                var __t0 = 'You';
-                if (!__t0) {
-                    return __yield('Meee', function (e, __t3) {
-                        return __t1(__t3);
+                var __t16 = 'You';
+                if (!__t16) {
+                    return __yield('Meee', function (e, __t19) {
+                        return __t17(__t19);
                     });
                 } else {
-                    return __t1(__t0);
+                    return __t17(__t16);
                 }
-                function __t1(__t2) {
-                    var x = __t2;
+                function __t17(__t18) {
+                    var x = __t18;
                     x.should.equal('You');
                     yielded.should.equal(false);
-                    return __yield('bye', function (e, __t4) {
+                    return __yield('bye', function (e, __t20) {
                         __stop();
                     });
                 }
@@ -174,17 +167,17 @@ describe('Generators', function () {
             return __gen(function (__yield, __stop) {
                 var x;
                 if (true) {
-                    return __yield('Meee', function (e, __t2) {
-                        x = __t2;
-                        return __t0(null);
+                    return __yield('Meee', function (e, __t23) {
+                        x = __t23;
+                        return __t21(null);
                     });
                 } else {
                     x = 'You';
-                    return __t0(null);
+                    return __t21(null);
                 }
-                function __t0(__t1) {
+                function __t21(__t22) {
                     x.should.equal('Meee');
-                    return __yield('bye', function (e, __t3) {
+                    return __yield('bye', function (e, __t24) {
                         __stop();
                     });
                 }

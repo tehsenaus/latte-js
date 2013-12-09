@@ -16,7 +16,7 @@ fs.readdirSync(path.join(__dirname, '../prelude')).forEach(function (file) {
 module.exports = traverser({
 	traverse: function (ast) {
 		ast = this.super.traverse(ast);
-
+		
 		for ( var n in preludes ) {
 			if ( ast['requires ' + n + ' prelude'] ) {
 				ast.body = preludes[n].concat(ast.body);

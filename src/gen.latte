@@ -18,8 +18,8 @@ module.exports = {
 		params = params || [];
 		return {
             "type": "CallExpression",
-            "callee": this.fn(stmts, params, id),
-            "arguments": params.map(p => this.ident(p))
+            "callee": this.member(this.fn(stmts, params), 'call'),
+            "arguments": ['this'].concat(params).map(p => this.ident(p))
         }
 	},
 	keys: function (x) {
@@ -46,6 +46,13 @@ module.exports = {
             "test": test,
             "consequent": this.block(cons),
             "alternate": alt && this.block(alt)
+        }
+	},
+	whileStmt: function (test, body) {
+		return {
+            "type": "WhileStatement",
+            "test": test,
+            "body": this.block(body)
         }
 	},
 

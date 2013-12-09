@@ -27,115 +27,6 @@ var arrayDestructuringTransformer = traverser({
 })
 
 
-var letTransformer = traverser({
-	varDecl: function (d, context) {
-		d = this.super.varDecl(d, context);
-
-		if ( d.kind == 'let' ) {
-			d.kind = 'var';
-			context.blocks[0].node.body.requiresBlockScope = true;
-		}
-
-		return d;
-	},
-
-	forInStmt: function (stmt, context) {
-		if ( stmt.left.type == 'VariableDeclaration' && stmt.left.kind == 'let' ) {
-			var body = stmt.body;
-			if ( body.type !== 'BlockStatement' ) {
-				body = stmt.body = gen.block([ body ]);
-			}
-
-			// stmt.left.kind = 'var';
-			// body.requiresBlockScope = true;
-			// body.blockScopeParams = stmt.left.declarations.map(d => d.id);
-
-			// Change to Object.keys.forEach
-			return this.stmt(gen.forEachKey(
-				stmt.right,
-				body.body,
-				stmt.left.declarations[0].id
-			), context)
-		}
-
-		return this.super.forInStmt(stmt, context);
-	},
-	block: function (b, context) {
-		var block = this.super.block(b, context);
-
-		if ( b.requiresBlockScope && context.stmts[1].type.indexOf('Function') < 0 ) {
-			b.body = [ {
-            	"type": "ExpressionStatement",
-            	"expression": gen.closure(b.body, b.blockScopeParams) 
-           	}]
-		}
-
-		return b;
-	}
-});
-
-var comprehensionTransformer = traverser({
-	comprehension: function (c, context) {
-		var body = gen.block([{
-            "type": "ExpressionStatement",
-            "expression": gen.call(
-				gen.member('__comp', 'push'), [
-					c.body
-				]
-			)
-        }]);
-
-        if ( c.filter ) {
-        	body = gen.block([{
-	            "type": "IfStatement",
-	            "test": c.filter,
-	            "consequent": body
-	        }])
-        }
-
-        c.blocks.reverse().forEach(b => {
-        	if ( b.type == 'ComprehensionBlock' ) {
-	        	body = gen.block([{
-		            "type": "ForInStatement",
-		            "left": {
-		                "type": "VariableDeclaration",
-		                "declarations": [
-		                    {
-		                        "type": "VariableDeclarator",
-		                        "id": b.left,
-		                        "init": null
-		                    }
-		                ],
-		                "kind": "var"
-		            },
-		            "right": b.right,
-		            "body": body,
-		            "each": false
-		        }])
-		    } else { // Var
-		    	body.body.unshift(
-		    		// This is all wrapped up in a closure, so we can safely
-		    		// use a vanilla 'var' decl here.
-		    		gen.varDecl(b.left, b.right)
-		    	)
-		    }
-        });
-
-		return this.expr(gen.closure([
-			gen.varDecl('__comp', {
-                "type": "ArrayExpression",
-                "elements": []
-            }),
-		].concat(body.body).concat([
-			{
-                "type": "ReturnStatement",
-                "argument": gen.ident('__comp')
-            }
-		])), context);
-	}
-});
-
-
 var forFilterTransformer = traverser({
 
 	forInStmt: function (stmt, context) {
@@ -155,69 +46,6 @@ var forFilterTransformer = traverser({
 
 
 
-
-
-var ITER = '__iter';
-var ITER_FN = {
-    "type": "FunctionDeclaration",
-    "id": gen.ident(ITER),
-    "params": [
-        {
-            "type": "Identifier",
-            "name": "v"
-        },
-        {
-            "type": "Identifier",
-            "name": "f"
-        }
-    ],
-    "defaults": [],
-    "body": {
-        "type": "BlockStatement",
-        "body": [
-        	gen.exprStmt(gen.call(gen.member('v', 'forEach'), ['f']))
-        ]
-    },
-    "rest": null,
-    "generator": false,
-    "expression": false
-}
-
-var insertIterTransformer = traverser({
-	traverse: function (ast) {
-		ast = this.super.traverse(ast);
-		if ( ast.requiresIter ) {
-			ast.body.unshift(ITER_FN);
-		}
-		return ast;
-	}
-});
-
-var forOfTransformer = traverser({
-	forOfStmt: function (stmt, context) {	
-		context.ast.requiresIter = true;
-
-		var left = stmt.left;
-		if ( stmt.left.type == 'VariableDeclaration' ) {
-			if ( stmt.left.declarations[0].id.type != 'Identifier' ) {
-				left = gen.ident(context.temp());
-				stmt.left.declarations[0].init = left;
-				stmt.body = gen.block(stmt.body);
-				stmt.body.body.unshift(stmt.left);
-			} else {
-				left = stmt.left.declarations[0].id;
-			}
-		}
-
-		return this.stmt(gen.exprStmt(
-			gen.call(ITER, [
-				stmt.right, gen.arrow([left], gen.block(stmt.body))
-			])
-		), context);
-	}
-});
-
-
 var flatten = Array.apply.bind([].concat, []);
 var cleanupTransformer = traverser({
 	stmts: function (stmts, context) {	
@@ -228,6 +56,15 @@ var cleanupTransformer = traverser({
 		stmts = flatten(stmts.map(s => s.type == 'BlockStatement' ? s.body : s));
 
 		return this.super.stmts(stmts, context);
+	},
+	blockStmts: function (stmts, context) {	
+		// Remove empty stmts
+		stmts = stmts.filter(s => s.type != 'EmptyStatement');
+
+		// Remove pointless blocks
+		stmts = flatten(stmts.map(s => s.type == 'BlockStatement' ? s.body : s));
+
+		return this.super.blockStmts(stmts, context);
 	},
 
 	// Remove pointless closures
@@ -252,13 +89,12 @@ var transformers = [
 	require('./transformer/quasi'),
 	require('./transformer/monad'),
 	require('./transformer/generator'),
-	comprehensionTransformer,
-	forOfTransformer,
+	require('./transformer/comprehension'),
+	require('./transformer/forOf'),
 	require('./transformer/arrowFunc'),
 	arrayDestructuringTransformer,
 	forFilterTransformer,
-	insertIterTransformer,
-	letTransformer,
+	require('./transformer/let'),
 
 	// Run a few passes
 	cleanupTransformer,

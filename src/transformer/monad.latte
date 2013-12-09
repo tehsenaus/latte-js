@@ -63,7 +63,7 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 			
 			var monad = genMonad(stmt.body);
 			var bodyClosure = gen.arrow([], monad);
-			var chain = gen.ident( context.temp() );
+			var chain = gen.ident( context.temp('monad') );
 
 			stmt.left.kind = 'let';
 			stmt.body = gen.assignStmt(

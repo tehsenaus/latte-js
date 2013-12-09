@@ -11,7 +11,7 @@ describe('Let Statement', function () {
                 process.nextTick(function () {
                     r += x;
                 });
-            }());
+            }.call(this));
         }
         process.nextTick(function () {
             r.should.equal(30);
