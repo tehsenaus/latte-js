@@ -20,21 +20,33 @@ var letTransformer = module.exports = traverser({
 
 	forInStmt: function (stmt, context) {
 		if ( stmt.left.type == 'VariableDeclaration' && stmt.left.kind == 'let' ) {
-			var body = stmt.body;
-			if ( body.type !== 'BlockStatement' ) {
-				body = stmt.body = gen.block([ body ]);
+			
+			var body = gen.block(stmt.body);
+
+			if ( stmtHasBreakContinue(body) || stmtHasReturn(body) ) {
+
+				var t = gen.ident(context.temp()),
+					id = stmt.left.declarations[0].id;
+				stmt.left.kind = 'var';
+				stmt.left.declarations[0].id = t;
+
+				body.body.unshift(
+					gen.varDecl(id, t, { kind: 'let' })
+				)
+
+				stmt.body = body;
+
+			} else {
+				// Change to Object.keys.forEach
+				stmt = gen.forEachKey(
+					stmt.right,
+					body.body,
+					stmt.left.declarations[0].id
+				);
 			}
+			// 
 
-			// stmt.left.kind = 'var';
-			// body.requiresBlockScope = true;
-			// body.blockScopeParams = stmt.left.declarations.map(d => d.id);
-
-			// Change to Object.keys.forEach
-			return this.stmt(gen.forEachKey(
-				stmt.right,
-				body.body,
-				stmt.left.declarations[0].id
-			), context)
+			return this.stmt(stmt, context);
 		}
 
 		return this.super.forInStmt(stmt, context);
@@ -137,6 +149,7 @@ var hasBreakContinueTraverser = traverser({
 
 	stmtHasBreakContinue: function (stmt) {
 		var context = this.context();
+		context.hasBreakContinue = false;
 		this.stmt(stmt, context);
 		return context.hasBreakContinue;
 	},
@@ -162,6 +175,7 @@ function stmtHasBreakContinue(stmt) {
 var hasReturnTraverser = traverser({
 	stmtHasReturn: function (stmt) {
 		var context = this.context();
+		context.hasReturn = false;
 		this.stmt(stmt, context);
 		return context.hasReturn;
 	},
@@ -178,7 +192,7 @@ var hasReturnTraverser = traverser({
 	func: x => x
 });
 function stmtHasReturn(stmt) {
-	return hasBreakContinueTraverser.stmtHasBreakContinue(stmt);
+	return hasReturnTraverser.stmtHasReturn(stmt);
 }
 
 function dbg(v) {

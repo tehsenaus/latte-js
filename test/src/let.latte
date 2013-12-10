@@ -36,4 +36,32 @@ describe('Let Statement', function () {
 		})
 	})
 
+	it('works with for (of)', function (done) {
+		var a = [10, 20],
+			r = 0;
+		
+		for ( let x of a ) {
+			process.nextTick(function () {
+				r += x;
+			})
+		}
+
+		process.nextTick(function () {
+			r.should.equal(30);
+			done();
+		})
+	})
+
+	it('works with return statement', function () {
+		var a = [10, 20];
+		
+		function f() {
+			for ( let i in a ) {
+				return a[i];
+			}
+		}
+
+		f().should.equal(10)
+	})
+
 })
