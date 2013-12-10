@@ -20,36 +20,68 @@ function compiler(options) {
 		buf = [];
 		return output;
 	}
-	var stream = es.map(function (data, callback) {
+
+	var stream = es.through (function (data) {
+		console.log('got data');
 		if (data == compiler.EOF) {
 			// reset
 			buf = [];
-			return callback();
+			return;
 		}
 
 		buf.push(data);
 
-		if ( interactive || ending ) {
+		if ( interactive ) {
 			try {
-				callback(null, compileBuffered());
+				this.emit('data', compileBuffered())
 			} catch (e) {
 				// Wait for more data
-				if ( !interactive && options.debug ) {
-					console.error(e.stack);
-				}
-				callback(interactive ? null : e);
 			}
-		} else {
-			callback();
 		}
+	}, function end() {
+		try {
+			console.log('compiling (end)');
+			this.emit('data', compileBuffered());
+		} catch (e) {
+			if (!interactive) this.emit('error', e);
+		}
+
+		this.emit('end');
 	})
 
-	var _end = stream.end;
-	stream.end = function (data) {
-		ending = true;
-		stream.write(data || '');
-		_end.call(this)
-	}
+	// var stream = es.map(function (data, callback) {
+	// 	console.log('got data');
+	// 	if (data == compiler.EOF) {
+	// 		// reset
+	// 		buf = [];
+	// 		return callback();
+	// 	}
+
+	// 	buf.push(data);
+
+	// 	if ( interactive || ending ) {
+	// 		try {
+	// 			console.log('compiling');
+	// 			callback(null, compileBuffered());
+	// 		} catch (e) {
+	// 			// Wait for more data
+	// 			if ( !interactive && options.debug ) {
+	// 				console.error(e.stack);
+	// 			}
+	// 			callback(interactive ? null : e);
+	// 		}
+	// 	} else {
+	// 		callback();
+	// 	}
+	// })
+
+	// var _end = stream.end;
+	// stream.end = function (data, enc, cb) {
+	// 	ending = true;
+	// 	console.log('end');
+	// 	stream.write(data || '', enc);
+	// 	_end.call(this);
+	// }
 
 	return stream;
 }
