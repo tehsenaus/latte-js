@@ -115,9 +115,10 @@ compiler.compile = compile;
 
 
 function compileFile(file, options) {
-	return fs.createReadStream(file).pipe(
-		compiler(options)
-	)
+	var compilerStream = compiler(options);
+	return fs.createReadStream(file)
+		.on('error', compilerStream.emit.bind(compilerStream, 'error'))
+		.pipe(compilerStream);
 }
 compiler.compileFile = compileFile;
 
