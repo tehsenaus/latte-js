@@ -118,8 +118,8 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 			}
 
 			stmt = gen.closure(stmt, [], rec);
-			stmt.callee.generator = true;
-			stmt.callee.internalGenerator = context.generator;
+			stmt.calleeFn.generator = true;
+			stmt.calleeFn.internalGenerator = context.generator;
 
 			return gen.block(this.stmts([
 				gen.exprStmt( stmt )
@@ -258,16 +258,16 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 
 	callExpr: function (expr, context) {
-		if ( expr.callee.generator && expr.callee.internalGenerator
-			&& expr.callee.body.body[0].type == 'ReturnStatement' ) {
+		if ( expr.calleeFn && expr.calleeFn.generator && expr.calleeFn.internalGenerator
+			&& expr.calleeFn.body.body[0].type == 'ReturnStatement' ) {
 
-			var m = expr.callee;
+			var m = expr.calleeFn;
 
 			return m.internalGenerator.withcc(cc => {
 
 				// Call the current continuation with the value of the
 				// generator expression.
-				m.body = cc( expr.callee.body.body[0].argument );
+				m.body = cc( m.body.body[0].argument );
 
 				expr = this.super.callExpr(expr, context);
 
@@ -287,15 +287,17 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 			// Yield statement - not using value, so avoid adding
 			// useless expressionstmt
 			if ( stmt.expression.type == 'YieldExpression' ) {
-				return this.super.stmt(stmt, context);
+				this.super.stmt(stmt, context);
+				return gen.empty;
 			}
 
 			// Calling an internal generator
 			if ( stmt.expression.type == 'CallExpression'
-					&& stmt.expression.callee.generator
-					&& stmt.expression.callee.internalGenerator ) {
+					&& stmt.expression.calleeFn
+					&& stmt.expression.calleeFn.generator
+					&& stmt.expression.calleeFn.internalGenerator ) {
 
-				var m = stmt.expression.callee;
+				var m = stmt.expression.calleeFn;
 
 				m.internalGenerator.withcc(cc => {
 					// Call our continuation at end of internal generator
@@ -503,8 +505,8 @@ function genGenerator(stmts) {
 }
 function genGeneratorExpr(expr, context) {
 	var r = gen.closure([ gen.ret(expr) ]);
-	r.callee.generator = true;
-	r.callee.internalGenerator = context.generator;
+	r.calleeFn.generator = true;
+	r.calleeFn.internalGenerator = context.generator;
 	return r;
 }
 

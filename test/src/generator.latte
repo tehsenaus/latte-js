@@ -95,6 +95,20 @@ describe('Generators', function () {
 	})
 
 
+	it('works with while statement', function () {
+		function *g()  {
+			var i = 0;
+			while(true) {
+				yield i++;
+			}
+		}
+
+		var i = g();
+		i.next().should.equal(0);
+		i.next().should.equal(1);
+		i.next().should.equal(2);
+	})
+
 
 	// it('works with for-in statement', function (done) {
 	// 	do {

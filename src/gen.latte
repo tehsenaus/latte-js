@@ -16,9 +16,11 @@ module.exports = {
 
 	closure: function (stmts, params, id) {
 		params = params || [];
+		var fn = this.fn(stmts, params, id);
 		return {
             "type": "CallExpression",
-            "callee": this.member(this.fn(stmts, params), 'call'),
+            "calleeFn": fn,
+            "callee": this.member(fn, 'call'),
             "arguments": ['this'].concat(params).map(p => this.ident(p))
         }
 	},

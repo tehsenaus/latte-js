@@ -188,4 +188,31 @@ describe('Generators', function () {
         v.should.equal('Meee');
         i.send(v).should.equal('bye');
     });
+    it('works with while statement', function () {
+        function g() {
+            return __gen(function (__yield, __stop) {
+                var i = 0;
+                return function __t25() {
+                    if (true) {
+                        return __yield(i++, function (e, __t30) {
+                            return __t25();
+                            return __t28(null);
+                        });
+                    } else {
+                        return __t28(null);
+                    }
+                    function __t28(__t29) {
+                        return __t26();
+                    }
+                }.call(this);
+                function __t26(__t27) {
+                    __stop();
+                }
+            });
+        }
+        var i = g();
+        i.next().should.equal(0);
+        i.next().should.equal(1);
+        i.next().should.equal(2);
+    });
 });
