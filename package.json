@@ -43,7 +43,7 @@
     "grunt": "~0.4.1",
     "mocha": "~1.12.1",
     "should": "~1.2.2",
-    "latte": "~0.2.2",
+    "latte": "~0.3.1",
     "grunt-shell": "~0.3.1",
     "grunt-mocha-test": "~0.6.3",
     "blanket": "~1.1.5",
