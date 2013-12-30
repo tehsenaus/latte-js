@@ -130,6 +130,10 @@ function traverser(args) {
 			    	throw new Error("Fatal: Stmt type is undefined! In: " + util.inspect(stmt));
 
 				default:
+					if ( stmt.type.indexOf('Expression') > 0 ) {
+						// XXX: be permissive about expressions where stmts are expected
+						return me.expr(stmt, context)
+					}
 					console.log("Unhandled stmt: ", stmt.type);
 			}
 			return stmt;
@@ -258,6 +262,9 @@ function traverser(args) {
 		    case 'UnaryExpression':
 		    case 'UpdateExpression':
 		    	return me.unary(expr, context);
+		    case 'SequenceExpression':
+		    	expr.expressions = expr.expressions.map(x => me.expr(x, context));
+		    	return expr;
 		    case 'MonadExpression':
 		    	return me.monad(expr, context);
 		    case 'YieldExpression':
