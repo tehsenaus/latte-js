@@ -143,5 +143,18 @@ describe('Monad Expression', function () {
 			done();
 		}
 	})
+
+	it('allows inner functions as part of bound expression', function (done) {
+		do {
+			var called = false;
+			<< (async('hello').then(m => {
+				m.should.equal('hello');
+				called = true;
+			}));
+
+			called.should.equal(true);
+			done();
+		}
+	})
 	
 })

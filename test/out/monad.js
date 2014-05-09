@@ -187,7 +187,7 @@ describe('Monad Expression', function () {
         (function () {
             var r = '';
             var __t16;
-            var __t21 = __iterator([
+            var __t22 = __iterator([
                     'a',
                     'b',
                     'c'
@@ -197,7 +197,7 @@ describe('Monad Expression', function () {
                     throw null;
                 } catch (x) {
                     try {
-                        x = __t21.next();
+                        x = __t22.next();
                     } catch (e) {
                         if (e === StopIteration)
                             break;
@@ -235,6 +235,19 @@ describe('Monad Expression', function () {
                 __t20.map(function (x) {
                     return x;
                 }).join('').should.equal('hello');
+                done();
+            });
+        }.call(this));
+    });
+    it('allows inner functions as part of bound expression', function (done) {
+        (function () {
+            var called = false;
+            return __when(async('hello').then(function (m) {
+                m.should.equal('hello');
+                called = true;
+            }), function (__t21) {
+                __t21;
+                called.should.equal(true);
                 done();
             });
         }.call(this));

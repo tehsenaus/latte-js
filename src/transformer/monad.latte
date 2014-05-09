@@ -289,6 +289,7 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 		// Traverse to get all binds
 		m = this.super.monad(m, context);
 
+		// Work backwards to produce the tree of binds
 		var body = binds.reduceRight(
 			(s, b) => (gen.block(b.stmts.concat([
 				gen.ret( gen.call(MONAD_BIND, [
