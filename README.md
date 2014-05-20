@@ -109,3 +109,57 @@ for (let i in [...]) {
 	...
 }
 ```
+
+
+
+## Changes
+
+### 0.3.4
+Fixed break and continue in monad blocks.
+Fixed issue with monadic binds in a multiple-var-decl statement resulting in undefined references.
+
+### 0.3.3
+Fixed issue with using functions as part of a monad bind.
+
+### 0.3.2
+Various fixes.
+
+### 0.3.1
+Support for monads.
+Initial support for ES6 generators.
+For-of statement.
+
+### 0.2.7
+Array comprehension improvement
+
+### 0.2.6
+Clear module cache when evaluating script in-process
+
+### 0.2.5
+Array comprehension with variables
+Set __dirname properly when evaluating script in-process
+
+### 0.2.4
+Array comprehensions
+Command line improvements
+For-in-if statement: `for (x in y if (x.is('awesome')))`
+
+### 0.2.3
+Array destructuring
+Let statement
+Support for more AST nodes (stops the noisy output)
+
+### 0.2.2
+Basic quasi-literals support
+
+### 0.2.1
+Node 0.8 compatibility
+
+### 0.2.0
+Grunt task
+
+### 0.1.0
+Unix fixes
+
+### 0.0.2
+Initial release, arrow functions

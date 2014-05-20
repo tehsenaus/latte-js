@@ -88,10 +88,10 @@ var cleanupTransformer = traverser({
 var transformers = [
 	require('./transformer/quasi'),
 	require('./transformer/arrowFunc'),
-	require('./transformer/monad'),
 	require('./transformer/generator'),
 	require('./transformer/comprehension'),
 	require('./transformer/forOf'),
+	require('./transformer/monad'),
 	require('./transformer/arrowFunc'),
 	arrayDestructuringTransformer,
 	forFilterTransformer,

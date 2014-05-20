@@ -33,6 +33,15 @@ describe('Monad Expression', function () {
 		}).done();
 	})
 
+	it('allows chain of binds in a single variable declaration', function (done) {
+		(do {
+			var x =<< async('Hellooo'),
+				y =<< async(x);
+			y.should.equal('Hellooo');
+			done();
+		}).done();
+	})
+
 	it('works with conditionals', function (done) {
 		do {
 			var x = true ? <<async('Meee') : 'You';
@@ -115,6 +124,36 @@ describe('Monad Expression', function () {
 		}
 	})
 
+	it('works with continue statement in for-in', function (done) {
+		do {
+			var x = "";
+
+			for ( var i in {a:1, b:1, c:1} ) {
+				var v =<< async(i);
+				if ( v == 'b' ) continue;
+				x += v;
+			}
+
+			x.should.equal('ac');
+			done();
+		}
+	})
+
+	it('works with break statement in for-in', function (done) {
+		do {
+			var x = "";
+
+			for ( var i in {a:1, b:1, c:1} ) {
+				var v =<< async(i);
+				if ( v == 'c' ) break;
+				x += v;
+			}
+
+			x.should.equal('ab');
+			done();
+		}
+	})
+
 
 	it('works with for-of statement', function (done) {
 		do {
@@ -127,6 +166,37 @@ describe('Monad Expression', function () {
 			done();
 		}
 	})
+
+
+	it('works with continue statement in for-of', function (done) {
+		do {
+			var r = "";
+			for (var x of ['a','b','c']) {
+				var v =<< async(x);
+				if ( v == 'b' ) continue;
+				r += v;
+			}
+
+			r.should.equal('ac');
+			done();
+		}
+	})
+
+	it('works with break statement in for-of', function (done) {
+		do {
+			var r = "";
+			for (var x of ['a','b','c']) {
+				var v =<< async(x);
+				if ( v == 'c' ) break;
+				r += v;
+			}
+
+			r.should.equal('ab');
+			done();
+		}
+	})
+
+
 
 	it('preserves lexical this', function (done) {
 		(function () {
@@ -156,5 +226,4 @@ describe('Monad Expression', function () {
 			done();
 		}
 	})
-	
 })

@@ -165,6 +165,17 @@ module.exports = {
             "argument": expr
         }
 	},
+	logical: function (op, a, b) {
+		return {
+            "type": "LogicalExpression",
+            "operator": op,
+            "left": this.ident(a),
+            "right": this.ident(b)
+        }
+    },
+    and: function (a, b) {
+    	return this.logical('&&', a, b);
+    },
 
 	ident: function (id) {
 		return typeof id === 'string' ? {

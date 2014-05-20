@@ -169,16 +169,24 @@ function traverser(args) {
     	}
 	}
 	
-	me.forInOfStmt = (stmt, context) => {
+	me._forInOfStmt = (stmt, context) => {
 		//stmt.right = me.expr(stmt.right, context)
 		stmt.body = me.stmt(stmt.body, context)
 		return stmt;
 	}
 	me.forInStmt = (stmt, context) => {
-		return me.forInOfStmt(stmt, context)
+		return me._forInOfStmt(stmt, context)
 	}
 	me.forOfStmt = (stmt, context) => {
-		return me.forInOfStmt(stmt, context)
+		return me._forInOfStmt(stmt, context)
+	}
+	me.forInOfStmt = (stmt, context) => {
+		switch (stmt.type) {
+			case 'ForInStatement':
+		    	return me.forInStmt(stmt, context)
+		    case 'ForOfStatement':
+		    	return me.forOfStmt(stmt, context)
+		}
 	}
 
 	me.whileDoWhileStmt = (stmt, context) => {
@@ -372,12 +380,15 @@ function traverser(args) {
 module.exports = traverser;
 
 
-var explicitTypes = "func ifStmt forStmt forInOfStmt whileDoWhileStmt switchStmt tryStmt";
+var explicitTypes = "func ifStmt forStmt forOfStmt forInStmt whileDoWhileStmt switchStmt tryStmt";
 traverser.explicit = function (name, args, exceptions) {
 	var t = traverser(args);
 
+	exceptions = exceptions || [];
+	if ( 'forInOfStmt' in args ) exceptions = exceptions.concat(['forOfStmt', 'forInStmt']);
+
 	explicitTypes.split(' ').forEach(x => {
-		if ( exceptions && exceptions.indexOf(x) >= 0 || (x in args) ) return;
+		if ( exceptions.indexOf(x) >= 0 || (x in args) ) return;
 
 		t[x] = () => {
 			throw new Error('Unhandled ' + x + ' in ' + name + '!');

@@ -23,6 +23,23 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 		return ast;
 	},
 
+	varDecl: function (stmt, context) {
+		if ( stmt.declarations.length > 1 && stmtHasBinds(stmt) ) {
+			
+			// Multiple variable decl with binds - 
+			// must split this up into separate stmts otherwise we may
+			// get undefined references
+
+			stmt = gen.block([
+				gen.varDecl(d.id, d.init, stmt)
+				for (d of stmt.declarations)
+			])
+			return this.stmt(stmt, context);
+		}
+
+		return this.super.varDecl(stmt, context);
+	},
+
 	ifStmt: function (stmt, context) {
 		var aHasBinds = stmtHasBinds(stmt.consequent)
 			bHasBinds = stmt.alternate && stmtHasBinds(stmt.alternate);
@@ -54,15 +71,31 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 		return stmt;
 	},
 
-	forInOfStmt: function (stmt, context) {
+	forInStmt: function (stmt, context) {
 
 		if ( !stmt.monadic && stmtHasBinds(stmt.body) ) {
 
 			// Body contains binds. Convert to a chain of 
 			// binds on a new monad block representing the body.
 			
-			var monad = genMonad(stmt.body);
-			var bodyClosure = gen.arrow([], monad);
+			var stmts = [];
+
+			if ( stmtHasBreak(stmt.body) ) {
+				var flag = context.temp('done');
+				stmts.push( gen.varDecl(flag) );
+				stmt.body = replaceBreaksWithFlagInStmt(stmt.body, flag, gen.val(true));
+
+				stmt.body = gen.block([
+					gen.ifStmt(gen.ident(flag), gen.ret()),
+					stmt.body
+				]);
+			}
+
+			stmt.body = replaceContinuesWithReturnInStmt(stmt.body);
+
+
+			var loopBodyMonad = genMonad(stmt.body);
+			var bodyClosure = gen.arrow([], loopBodyMonad);
 			var chain = gen.ident( context.temp('monad') );
 
 			stmt.left.kind = 'let';
@@ -71,18 +104,18 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 			)
 			stmt.monadic = true;
 
-			return gen.block(this.stmts([
+			return gen.block(this.stmts(stmts.concat([
 				gen.varDecl(chain, null),
 				stmt,
 				gen.exprStmt( genBind(chain) )
-			], context));
+			]), context));
 		}
 
 		// Doesn't contain binds, but may contain other monads
 		var oldMonad = context.monad;
 		context.monad = null;
 		
-		stmt = this.super.forInOfStmt(stmt, context);
+		stmt = this.super.forInStmt(stmt, context);
 		
 		context.monad = oldMonad;
 
@@ -132,9 +165,20 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 
 			// Body contains binds. Convert to a recursive
 			// closure
+
+			var stmts = [];
+
+			if ( stmtHasBreak(stmt.body) ) {
+				var flag = context.temp('looping');
+				stmts.push( gen.varDecl(flag, gen.val(true)) );
+				stmt.test = gen.and(flag, stmt.test);
+				stmt.body = replaceBreaksWithFlagInStmt(stmt.body, flag);
+			}
+
+			stmt.body = replaceContinuesWithReturnInStmt(stmt.body);
 			
 			var monad = genMonad(stmt.body);
-			var rec = context.temp();
+			var rec = context.temp('loop');
 
 			stmt = gen.closure([
 				// Do test, if pass, evaluate body and recurse
@@ -146,9 +190,9 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 			], [], rec)
 			stmt.monadic = true;
 
-			return gen.block(this.stmts([
+			return gen.block(this.stmts(stmts.concat([
 				gen.exprStmt( genBind(stmt) )
-			], context));
+			]), context));
 		}
 
 		// Doesn't contain binds, but may contain other monads
@@ -356,6 +400,60 @@ function genMonad(stmts) {
 }
 function genMonadExpr(expr) {
 	return genMonad(gen.ret(expr));
+}
+
+
+
+
+var hasBreakTraverser = createBreakContinueTraverser(['BreakStatement'])
+
+function stmtHasBreak(stmt) {
+	return hasBreakTraverser.stmtHasBreakContinue(stmt);
+}
+function replaceBreaksWithFlagInStmt(stmt, flag, val) {
+	var tr = createBreakContinueTraverser(['BreakStatement']);
+	tr.breakContinue = () => {
+		return gen.ret( gen.assign(flag, val || gen.val(false)) );
+	}
+	return tr.stmt(stmt, tr.context());
+}
+function replaceContinuesWithReturnInStmt(stmt) {
+	var tr = createBreakContinueTraverser(['ContinueStatement']);
+	tr.breakContinue = () => {
+		return { type: 'ReturnStatement' }
+	}
+	return tr.stmt(stmt, tr.context());
+}
+
+function createBreakContinueTraverser(types) {
+	return traverser({
+
+		stmtHasBreakContinue: function (stmt) {
+			var context = this.context();
+			context.hasBreakContinue = false;
+			this.stmt(stmt, context);
+			return context.hasBreakContinue;
+		},
+
+		stmt: function (stmt, context) {
+			if ( types.indexOf(stmt.type) >= 0 ) {
+				stmt = this.breakContinue(stmt, context);
+			}
+			return this.super.stmt(stmt, context);
+		},
+
+		breakContinue: function (stmt, context) {
+			context.hasBreakContinue = true;
+			return stmt;
+		},
+
+		// Stop points
+		forStmt: x => x,
+		forInStmt: x => x,
+		whileDoWhileStmt: x => x,
+		func: x => x,
+		monad: x => x
+	});
 }
 
 
