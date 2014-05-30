@@ -18,12 +18,12 @@ var forOfTransformer = module.exports = traverser({
 		var iter = gen.ident(context.temp());
 		body[0].declarations[0].id = iter;
 		body[0].declarations[0].init.arguments[0] = stmt.right;
+		body[1].test.callee.object = iter;
 		var loopBody = body[1].body.body;
 		loopBody[0].kind = stmt.left.kind;
 		loopBody[0].declarations[0].id = stmt.left.declarations[0].id;
-		loopBody[1].block.body[0].expression.left = stmt.left.declarations[0].id;
-		loopBody[1].block.body[0].expression.right.callee.object = iter;
-		loopBody[2] = stmt.body;
+		loopBody[0].declarations[0].init.callee.object = iter;
+		loopBody[1] = stmt.body;
 		
 		return this.stmt(gen.block(body), context);
 	}

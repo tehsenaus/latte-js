@@ -2,34 +2,58 @@
 if ( typeof StopIteration === "undefined" ) {
 	var StopIteration = "StopIteration";
 }
+
+// Iterator wrapper, to avoid using try/catch at usage sites
+function __Iterator(v) {
+	this.iterator = v.iterator();
+}
+__Iterator.prototype.hasNext = function () {
+	try {
+		this._next = this.iterator.next();
+		return true;
+	} catch (e) {
+		if ( e === StopIteration ) return false;
+		throw e;
+	}
+}
+__Iterator.prototype.next = function () {
+	return this._next;
+}
+
+function __ArrayIterator(v) {
+	this.array = v;
+	this.index = 0;
+}
+__ArrayIterator.prototype.hasNext = function () {
+	return this.index < this.array.length;
+}
+__ArrayIterator.prototype.next = function () {
+	return this.array[this.index++];
+}
+
+function __ObjectIterator (v) {
+	this.obj = v;
+	this.keysIterator = new __ArrayIterator(Object.keys(v));
+}
+__ObjectIterator.prototype.hasNext = function () {
+	return this.keysIterator.hasNext();
+}
+__ObjectIterator.prototype.next = function () {
+	var k = this.keysIterator.next();
+	return [k, this.obj[k]];
+}
+
 function __iterator(v) {
 	// native/custom iterator
 	if ( typeof v.iterator === 'function' ) {
-		return v.iterator();
+		return new __Iterator(v);
 	}
 
 	// array/string iterator
 	if ( typeof v === 'string' || Object.prototype.toString.call(v) === '[object Array]' ) {
-		var a = v, i = 0;
-		return {
-			next: function () {
-				if ( i < a.length ) {
-					return a[i++];
-				}
-				throw StopIteration;
-			}
-		}
+		return new __ArrayIterator(v);
 	}
 
 	// object iterator
-	var o = v, a = Object.keys(o), i = 0;
-	return {
-		next: function () {
-			if ( i < a.length ) {
-				var k = a[i++];
-				return [k, o[k]];
-			}
-			throw StopIteration;
-		}
-	}
+	return new __ObjectIterator(v);
 }
