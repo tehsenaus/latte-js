@@ -114,6 +114,10 @@ for (let i in [...]) {
 
 ## Changes
 
+### 0.3.5
+Allow monad binds in for loops.
+Allow monad binds in test/update expressions in all supported control structures.
+
 ### 0.3.4
 Fixed break and continue in monad blocks.
 Fixed issue with monadic binds in a multiple-var-decl statement resulting in undefined references.

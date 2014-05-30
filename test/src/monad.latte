@@ -6,7 +6,7 @@ describe('Monad Expression', function () {
 
 	function async(x) {
 		var d = Q.defer();
-		setTimeout(() => d.resolve(x), 10);
+		setTimeout(() => d.resolve(x), 1);
 		return d.promise;
 	}
 
@@ -109,7 +109,69 @@ describe('Monad Expression', function () {
 		}
 	})
 
+	it('works with if statement condition', function (done) {
+		do {
+			var x;
+			if ( << async(true) ) {
+				x = 'Moi';
+			} else {
+				x = 'You';
+			}
 
+			x.should.equal('Moi');
+			done();
+		}
+	})
+
+	it('works with while statement', function (done) {
+		do {
+			var x = 0;
+			var i = 3;
+			while (i > 0) {
+				x += << async(i--);
+			}
+			
+			x.should.equal(6);
+			done();
+		}
+	})
+
+	it('works with while statement condition', function (done) {
+		do {
+			var x = 0;
+			var i = 3;
+			while (<<async(i) > 0) {
+				x += i--;
+			}
+			
+			x.should.equal(6);
+			done();
+		}
+	})
+
+	it('works with for statement', function (done) {
+		(do {
+			var x = 0;
+			for (var i = 0; i <= 3; i++) {
+				x += << async(i);
+			}
+			
+			x.should.equal(6);
+			done();
+		}).done();
+	})
+
+	it('works with for statement expressions', function (done) {
+		(do {
+			var x = 0;
+			for (var i = 0; <<async(i) <= 3; i += <<async(1)) {
+				x += i;
+			}
+			
+			x.should.equal(6);
+			done();
+		}).done();
+	})
 
 	it('works with for-in statement', function (done) {
 		do {
@@ -117,6 +179,19 @@ describe('Monad Expression', function () {
 			
 			for ( var i in {a:1, b:1} ) {
 				x += << async(i);
+			}
+
+			x.should.equal('ab');
+			done();
+		}
+	})
+
+	it('works with for-in statement expression', function (done) {
+		do {
+			var x = "";
+			
+			for ( var i in << async({a:1, b:1}) ) {
+				x += i;
 			}
 
 			x.should.equal('ab');
@@ -167,6 +242,17 @@ describe('Monad Expression', function () {
 		}
 	})
 
+	it('works with for-of statement expression', function (done) {
+		do {
+			var r = "";
+			for (var x of << async(['a','b','c'])) {
+				r += x;
+			}
+
+			r.should.equal('abc');
+			done();
+		}
+	})
 
 	it('works with continue statement in for-of', function (done) {
 		do {

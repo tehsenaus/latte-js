@@ -1,6 +1,7 @@
 
 var traverser = require("../traverser"),
-	gen = require("../gen");
+	gen = require("../gen"),
+	dbg = require("../util/dbgPrint");
 
 var monadTransformer = module.exports = traverser.explicit('monad', {
 	_bind: function (expr, context) {
@@ -61,6 +62,9 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 		}
 
 		// Doesn't contain binds, but may contain other monads
+		// Test may still have binds, so process that first
+		stmt.test = this.expr(stmt.test, context);
+
 		var oldMonad = context.monad;
 		context.monad = null;
 		
@@ -112,6 +116,8 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 		}
 
 		// Doesn't contain binds, but may contain other monads
+		stmt.right = this.expr(stmt.right, context);
+
 		var oldMonad = context.monad;
 		context.monad = null;
 		
@@ -123,30 +129,23 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 	},
 
 	forStmt: function (stmt, context) {
-		if ( !stmt.monadic && stmtHasBinds(stmt.body) ) {
+		if ( !stmt.monadic && (
+			stmtHasBinds(stmt.body)
+			|| exprHasBinds(stmt.update)
+			|| exprHasBinds(stmt.test)
+		) ) {
 
-			throw new Error('Monadic binds not supported in for statement... yet!');
+			// Convert to a while statement, and process that
 
-			// Body contains binds. Convert to a recursive
-			// closure
+			stmt = gen.block([
+				stmt.init,
+				gen.whileStmt(stmt.test, gen.block([
+					stmt.body,
+					gen.exprStmt(stmt.update)
+				]))
+			])
 			
-			var monad = genMonad(stmt.body);
-			var bodyClosure = gen.arrow([], monad);
-			var rec = context.temp();
-
-			stmt = gen.call(gen.fn([
-				// Do test, if pass, evaluate body and recurse
-				gen.ret(gen.conditional(
-					stmt.test,
-					gen.call(MONAD_BIND, [bodyClosure, rec]),
-					gen.ident('null')
-				))
-			]))
-			stmt.monadic = true;
-
-			return gen.block(this.stmts([
-				gen.exprStmt( genBind(stmt) )
-			], context));
+			return this.stmt(stmt, context);
 		}
 
 		// Doesn't contain binds, but may contain other monads
@@ -161,7 +160,10 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 	},
 
 	whileDoWhileStmt: function (stmt, context) {
-		if ( !stmt.monadic && stmtHasBinds(stmt.body) ) {
+		if ( !stmt.monadic && (
+			stmtHasBinds(stmt.body)
+			|| stmtHasBinds(stmt.test)
+		) ) {
 
 			// Body contains binds. Convert to a recursive
 			// closure
@@ -207,7 +209,7 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 	},
 
 	switchStmt: function (stmt, context) {
-		if ( !stmt.monadic && stmtHasBinds(stmt) ) {
+		if ( !stmt.monadic && (stmtHasBinds(stmt) || exprHasBinds(stmt.discriminant)) ) {
 			throw new Error('Monadic binds not supported in switch statement... yet!');
 		}
 
@@ -252,7 +254,7 @@ var monadTransformer = module.exports = traverser.explicit('monad', {
 	unary: function (expr, context) {
 		if ( expr.operator === "<<" ) {
 			if (!context.monad) {
-				throw new Error('Unexpected "<<": not in monad block!');
+				throw new Error('Unexpected "<<": not in monad block!\nIn:' + dbg(expr));
 			}
 
 			return this._bind(expr.argument, context);
