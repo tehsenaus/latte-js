@@ -1,0 +1,8 @@
+
+module.exports = function dbgPrint(v) {
+	try {
+		return require("escodegen").generate(v);
+	} catch (e) {
+		return v;
+	}
+}
