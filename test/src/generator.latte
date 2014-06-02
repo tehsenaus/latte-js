@@ -3,8 +3,8 @@ var should = require("should");
 var Q = require("q");
 
 describe('Generators', function () {
-	"use strict";
-	
+	//"use strict";
+
 	it('can yield values', function () {
 		function *g() {
 			yield 42;
@@ -79,6 +79,10 @@ describe('Generators', function () {
 	it('works with if statement', function () {
 		function *g()  {
 			var x;
+			if ( false ) {
+				x = yield 'Not me';
+			}
+
 			if ( true ) {
 				x = yield 'Meee';
 			} else {
@@ -95,26 +99,47 @@ describe('Generators', function () {
 		i.send(v).should.equal("bye");
 	})
 
+	it('works with if statement condition', function () {
+		function *g()  {
+			if ( yield true ) {
+				yield 'good';
+			} else {
+				yield 'bad';
+			}
+		}
+
+		var i = g();
+		var v = i.next();
+		v.should.equal(true);
+		i.send(v).should.equal("good");
+	})
+
 	it('works with nested if statement', function () {
 		function *g()  {
 			var x;
 			if ( true ) {
+				var y = yield 'Meee';
 				if ( false ) {
 					x = yield 'Arrgh';
 				} else {
-					x = yield 'Meee';
+					y.should.equal('Meee');
+					x = yield 'Me again';
 				}
+
+				y.should.equal('Meee');
 			} else {
 				x = 'You';
 			}
 
-			x.should.equal('Meee');
+			x.should.equal('Me again');
 			yield "bye";
 		}
 
 		var i = g();
 		var v = i.next();
 		v.should.equal('Meee');
+		v = i.send(v);
+		v.should.equal("Me again");
 		i.send(v).should.equal("bye");
 	})
 
@@ -123,15 +148,32 @@ describe('Generators', function () {
 		function *g()  {
 			var i = 0;
 			while(i < 100000) {
-				yield i++;
+				if ( i % 2 == 0 ) 
+					yield i;
+				i++;
 			}
 			console.log('done');
 		}
 
 		var i = g();
 		i.next().should.equal(0);
-		i.next().should.equal(1);
 		i.next().should.equal(2);
+		i.next().should.equal(4);
+	})
+
+	it('works with while statement condition', function () {
+		function *g()  {
+			var i = 0;
+			while((yield i++) < 10) {
+				
+			}
+			yield 'done';
+		}
+
+		var i = g();
+		i.next().should.equal(0);
+		i.send(5).should.equal(1);
+		i.next(10).should.equal('done');
 	})
 
 	it('works with nested while statement', function () {
@@ -140,8 +182,9 @@ describe('Generators', function () {
 			while(i < 100000) {
 				var j = 1;
 				while(j <= 2) {
-					yield (i++ * j++);
+					yield (i * j++);
 				}
+				i++;
 			}
 			console.log('done');
 		}

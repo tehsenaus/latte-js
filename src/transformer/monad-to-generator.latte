@@ -1,0 +1,68 @@
+
+var traverser = require("../traverser"),
+	gen = require("../gen"),
+	dbg = require("../util/dbgPrint");
+
+var monadTransformer = module.exports = traverser({
+	traverse: function (ast) {
+		ast = this.super.traverse(ast);
+		if ( ast.hasMonads ) {
+			ast['requires monad-to-generator prelude'] = true;
+		}
+		return ast;
+	},
+
+	func: function (stmt, context) {
+		// Inner functions have new context
+		var oldMonad = context.monad;
+		context.monad = null;
+		
+		stmt = this.super.func(stmt, context);
+		
+		context.monad = oldMonad;
+
+		return stmt;
+	},
+
+	unary: function (expr, context) {
+		if ( expr.operator === "<<" ) {
+			console.log('YIELD')
+			if (!context.monad) {
+				throw new Error('Unexpected "<<": not in monad block!\nIn:' + dbg(expr));
+			}
+
+			return {
+				type: 'YieldExpression',
+				argument: this.expr(expr.argument, context)
+			}
+		}
+		return this.super.unary(expr, context);
+	},
+
+	monad: function (m, context) {
+		console.log('MONAD');
+
+		var lastMonad = context.monad;
+		var monad = context.monad = true;
+
+		var body = this.stmt(m.body, context);
+
+		context.monad = lastMonad;
+		context.ast.hasMonads = true;
+
+		var g = gen.closure(body);
+		g.calleeFn.generator = true;
+
+		console.log(dbg(g));
+
+		return gen.call('__monad', [ g ])
+	}
+})
+
+function dbg(v) {
+	try {
+		return require("escodegen").generate(v);
+	} catch (e) {
+		return v;
+	}
+}

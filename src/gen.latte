@@ -1,6 +1,13 @@
 
 module.exports = {
 
+	comment: function (c) {
+		return {
+			type: 'Line',
+			value: c
+		}
+	},
+	
 	arrow: function (params, body) {
 		return {
             "type": "ArrowFunctionExpression",
@@ -17,13 +24,17 @@ module.exports = {
 	closure: function (stmts, params, id) {
 		params = params || [];
 		var fn = this.fn(stmts, params, id);
+		return this.callWithThis(fn, params);
+	},
+	callWithThis: function (fn, params) {
 		return {
             "type": "CallExpression",
             "calleeFn": fn,
             "callee": this.member(fn, 'call'),
-            "arguments": ['this'].concat(params).map(p => this.ident(p))
+            "arguments": ['this'].concat(params || []).map(p => this.ident(p))
         }
 	},
+
 	keys: function (x) {
 		return this.call(
 			this.member('Object', 'keys'), [x]

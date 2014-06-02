@@ -1,0 +1,47 @@
+
+
+do {
+	while(true) {
+		<< x;
+	}
+}
+
+__monad(function *() {
+	while (true) {
+		yield x;
+	}
+})
+
+////////////
+
+function *g() {
+	while (true) {
+		yield x;
+	}
+}
+
+function *g() {
+	(function rec() {
+		if ( true ) {
+			yield x;
+			rec();
+		}
+	})();
+}
+
+function g() {
+	return __gen(function (__yield, __stop) {
+		function rec() {
+			if ( true ) {
+				__yield(x, rec);
+			} else {
+				// CC
+
+			}
+		}
+
+		function c1() {
+			__stop();
+		}
+	})
+}

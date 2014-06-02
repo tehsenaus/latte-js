@@ -105,7 +105,9 @@ function compile(source, options) {
 		fs.writeFileSync('ast.debug.transformed.js', util.inspect(ast, null, null));
 	}
 
-	return escodegen.generate(ast);
+	return escodegen.generate(ast, {
+		comment: true
+	});
 }
 compiler.compile = compile;
 

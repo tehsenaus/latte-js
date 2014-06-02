@@ -15,7 +15,7 @@ function traverser(args) {
 				var scope = this.enterBlock(node.body, node);
 				
 				scope.ctemp = () => this.ast.ctemp;
-				scope.temp = () => "__t" + this.ast.ctemp++;
+				scope.temp = n => "__t" + this.ast.ctemp++ + (n ? '_'+n : '');
 
 				this.scopes.unshift(scope);
 				return scope;
@@ -155,7 +155,8 @@ function traverser(args) {
     		type: 'IfStatement',
     		test: stmt.test && me.expr(stmt.test, context),
     		consequent: me.stmt(stmt.consequent, context),
-    		alternate: stmt.alternate && me.stmt(stmt.alternate, context)
+    		alternate: stmt.alternate && me.stmt(stmt.alternate, context),
+    		leadingComments: stmt.leadingComments
     	}
 	}
 
@@ -165,7 +166,8 @@ function traverser(args) {
     		init: stmt.init && me.stmt(stmt.init, context),
     		test: stmt.test && me.expr(stmt.test, context),
     		update: stmt.update && me.expr(stmt.update, context),
-    		body: me.stmt(stmt.body, context)
+    		body: me.stmt(stmt.body, context),
+    		leadingComments: stmt.leadingComments
     	}
 	}
 	
