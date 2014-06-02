@@ -11,4 +11,14 @@ describe('For-of statement', function () {
 		r.should.equal("abc");
 	})
 
+	it('supports nested loops', function () {
+		var r = "";
+		for (var x of ['a','b','c']) {
+			for (var y of ['x','y']) {
+				r += x + y;
+			}
+		}
+		r.should.equal("axaybxbycxcy");
+	})
+
 })

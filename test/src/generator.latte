@@ -213,16 +213,50 @@ describe('Generators', function () {
 	// })
 
 
-	// it('works with for-of statement', function (done) {
-	// 	do {
-	// 		var r = "";
-	// 		for (var x of ['a','b','c']) {
-	// 			r += << async(x);
-	// 		}
+	it('works with for-of statement', function () {
+		function *g() {
+			for (var x of ['a','b','c']) {
+				yield x;
+			}
+		}
 
-	// 		r.should.equal('abc');
-	// 		done();
-	// 	}
-	// })
+		var i = g();
+		i.next().should.equal('a');
+		i.next().should.equal('b');
+		i.next().should.equal('c');
+	})
 	
+	it('works with nested for-of statement', function () {
+		function *g() {
+			for (var x of ['a','b']) {
+				for (var y of ['x','y']) {
+					yield x+y;
+				}
+			}
+		}
+
+		var i = g();
+		i.next().should.equal('ax');
+		i.next().should.equal('ay');
+		i.next().should.equal('bx');
+		i.next().should.equal('by');
+	})
+
+	it('works with empty nested for-of statement', function () {
+		function *g() {
+			for (var x of []) {
+				for (var y of ['x','y']) {
+					yield x+y;
+				}
+			}
+		}
+
+		var i = g();
+		try {
+			i.next();
+			throw "Shouldn't return any elements";
+		} catch (e) {
+			e.should.equal(StopIteration);
+		}
+	})
 })
