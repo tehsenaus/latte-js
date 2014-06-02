@@ -367,7 +367,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		})
 
 		m.body.body = [ gen.ret(
-			gen.call('__gen', [ gen.fn([
+			gen.call(gen.member('__gen', 'call'), [ gen.ident('this'), gen.fn([
 				body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
 			], ['__yield','__stop']) ]) 
 		)];

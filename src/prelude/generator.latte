@@ -3,9 +3,12 @@ if ( typeof StopIteration === "undefined" ) {
 	var StopIteration = "StopIteration";
 }
 function __gen(fn) {
-	var closed, born;
+	var closed, born, me = this;
 
 	return {
+		iterator: function () {
+			return this;
+		},
 		next: function () {
 			return this.send();
 		},
@@ -14,7 +17,7 @@ function __gen(fn) {
 				throw new Error('generator is closed!');
 
 			if ( !born ) {
-				var v = fn(function __yield(v, next) {
+				var v = fn.call(me, function __yield(v, next) {
 					fn = next;
 					return v;
 				}, function __stop() {
@@ -25,7 +28,7 @@ function __gen(fn) {
 				return v;
 			}
 
-			return fn(null, v);
+			return fn.call(me, null, v);
 		},
 		"throw": function (e) {
 			if ( closed )
