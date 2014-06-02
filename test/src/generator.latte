@@ -94,19 +94,64 @@ describe('Generators', function () {
 		i.send(v).should.equal("bye");
 	})
 
+	it('works with nested if statement', function () {
+		function *g()  {
+			var x;
+			if ( true ) {
+				if ( false ) {
+					x = yield 'Arrgh';
+				} else {
+					x = yield 'Meee';
+				}
+			} else {
+				x = 'You';
+			}
+
+			x.should.equal('Meee');
+			yield "bye";
+		}
+
+		var i = g();
+		var v = i.next();
+		v.should.equal('Meee');
+		i.send(v).should.equal("bye");
+	})
+
 
 	it('works with while statement', function () {
 		function *g()  {
 			var i = 0;
-			while(true) {
+			while(i < 100000) {
 				yield i++;
 			}
+			console.log('done');
 		}
 
 		var i = g();
 		i.next().should.equal(0);
 		i.next().should.equal(1);
 		i.next().should.equal(2);
+	})
+
+	it('works with nested while statement', function () {
+		function *g()  {
+			var i = 0;
+			while(i < 100000) {
+				var j = 1;
+				while(j <= 2) {
+					yield (i++ * j++);
+				}
+			}
+			console.log('done');
+		}
+
+		var i = g();
+		i.next().should.equal(0);
+		i.next().should.equal(0);
+		i.next().should.equal(1);
+		i.next().should.equal(2);
+		i.next().should.equal(2);
+		i.next().should.equal(4);
 	})
 
 
