@@ -3,7 +3,8 @@ var should = require("should");
 var Q = require("q");
 
 describe('Generators', function () {
-
+	"use strict";
+	
 	it('can yield values', function () {
 		function *g() {
 			yield 42;
