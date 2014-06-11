@@ -14,5 +14,10 @@ results
 node_modules
 npm-debug.log
 
+ast.debug.js
+
 /lib
+/doc
 /test/out/
+/npm-cache
+/coverage.html

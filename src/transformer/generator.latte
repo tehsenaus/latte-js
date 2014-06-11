@@ -1,8 +1,17 @@
+// # ES6 Generators
 
 var traverser = require("../traverser"),
 	gen = require("../gen");
 
 var generatorTransformer = module.exports = traverser.explicit('generator', {
+	traverse: function (ast) {
+		ast = this.super.traverse(ast);
+		if ( ast.hasGenerators ) {
+			ast['requires generator prelude'] = true;
+		}
+		return ast;
+	},
+
 	_yield: function (expr, context) {
 		var oldIsInYield = context.isInYield;
 		context.isInYield = true
@@ -13,13 +22,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		return bound;
 	},
 
-	traverse: function (ast) {
-		ast = this.super.traverse(ast);
-		if ( ast.hasGenerators ) {
-			ast['requires generator prelude'] = true;
-		}
-		return ast;
-	},
+	
 
 	ifStmt: function (stmt, context) {
 		var aHasYields = stmtHasYields(stmt.consequent)
@@ -380,25 +383,42 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 
 
-// Generator Block:
-// A block with internal control flow, supported by
+// Continuation Support
+// --------------------
+
+
+// ### Generator Block
+// A block containing internal control flow supported by
 // named continuations.
 function generatorBlock (context) {
+	// Generator blocks start off as a basic block.
 	var currBasicBlock = basicBlock(context),
+
+		// The top-level basic block is rendered to a placeholder list.
 		renderedBlocks = [],
 		renderSite = renderedBlocks;
 
 	return {
+		// Statements and yields are generated in the current block.
+		stmt: s => currBasicBlock.stmt(s),
+		yield: v => currBasicBlock.yield(v),
+
 		beginNamedContinuation: function (cname, valueName) {
-			// Terminate the current basic block, pointing to the
-			// next continuation
+			// When a continuation is started, the previous block must end.
+
+			// A 'render site' for the continuation is created at the end of the
+			// previous block - thus the scope of the previous block will
+			// be accessible in the continuation.
 
 			var cDeclSite = gen.block([]);
 			currBasicBlock.stmt(cDeclSite);
 
+			// The code for the previous block is rendered at its render site.
 			renderSite.push( currBasicBlock.renderWithContinuation(cname) );
 			renderSite = cDeclSite.body;
 
+			// The continuation then becomes the current block. From here on in,
+			// statements will go here.
 			currBasicBlock = namedContinuation(context, cname, valueName);
 			return currBasicBlock;
 		},
@@ -408,13 +428,14 @@ function generatorBlock (context) {
 			return gen.block( renderedBlocks );
 		},
 
-		stmt: s => currBasicBlock.stmt(s),
-		yield: v => currBasicBlock.yield(v),
 		isEmpty: () => renderedBlocks.length == 0 && currBasicBlock.isEmpty()
 	}
 }
 
 
+// ### Generator Named Continuation
+// A named continuation is basically a basic block, wrapped up in a
+// function declaration.
 function namedContinuation (context, cname, valueName) {
 	var self = basicBlock(context),
 		renderWithContinuation = self.renderWithContinuation;
@@ -429,19 +450,21 @@ function namedContinuation (context, cname, valueName) {
 }
 
 
-// Generator Basic Block:
-// A sequence of yields and statements with a single exit continuation.
+// ### Generator Basic Block
+// A linear sequence of yields and statements, with a single exit continuation.
 function basicBlock (context, name, opts) {
 	var stmts = [],
 		yields = [];
 
 	return {
-		// Evaluate yields in sequence, then call the passed continuation
-		// with the specified value expression
+		// Generates code to evaluate yields in sequence, then call the passed continuation
+		// with the specified value expression, which should be a valid expression
+		// at the point all yields have returned.
+
 		renderWithContinuation: (c, v) => {
 			var r = c.type == 'BlockStatement' ? c : gen.call(c, v ? [v] : []);
 
-			// Anything else to do before we call?
+			// Any trailing statements are executed before calling the continuation.
 			if ( stmts.length ) {
 				if ( r.type == 'CallExpression' ) {
 					r = gen.block([ gen.ret(r) ])
@@ -450,6 +473,8 @@ function basicBlock (context, name, opts) {
 				r.body = stmts.concat(r.body);
 			}
 
+			// Yields are transformed into a nested callback structure. Any non-yielding
+			// statements are interleaved into the correct place.
 			r = yields.reduceRight(
 				(s, y) => gen.block( y.stmts.concat([
 
@@ -488,6 +513,9 @@ function basicBlock (context, name, opts) {
 
 
 
+
+// Traverser Support
+// -----------------
 
 var hasYieldsTraverser = traverser({
 	exprHasYields: function (expr) {

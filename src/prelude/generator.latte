@@ -1,14 +1,20 @@
+// # Generator Prelude
 
+// StopIteration is used to signal the end of generator execution.
 if ( typeof StopIteration === "undefined" ) {
-	var StopIteration = "StopIteration";
+	this.StopIteration = "StopIteration";
 }
+
 function __gen(fn) {
 	var closed, born, me = this;
 
 	return {
+		// Generators implement the iterator protocol, and they are
+		// 'one-shot' iterators.
 		iterator: function () {
 			return this;
 		},
+		
 		next: function () {
 			return this.send();
 		},

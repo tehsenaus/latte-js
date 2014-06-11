@@ -49,17 +49,31 @@ module.exports = function(grunt) {
         },
         src: ['test/**/*.js']
       }
+    },
+
+    // Documentation generator
+    groc: {
+      javascript: [
+        "src/**/*.latte", "README.md"
+      ],
+      options: {
+        "out": "doc/"
+      }
     }
   });
 
   grunt.loadNpmTasks('grunt-shell');
   grunt.loadNpmTasks('grunt-mocha-test');
   grunt.loadNpmTasks('latte');
+  grunt.loadNpmTasks('grunt-groc');
+
+  // Add in support for latte
+  require('grunt-groc/node_modules/groc/lib/languages').JavaScript.nameMatchers.push('.latte');
   
   grunt.registerTask('build', ['latte:build']);
 
   grunt.registerTask('test', ['shell:buildTest', 'mochaTest']);
 
   // Default task(s).
-  grunt.registerTask('default', ['build', 'test']);
+  grunt.registerTask('default', ['build', 'test', 'groc']);
 };

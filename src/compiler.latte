@@ -1,6 +1,13 @@
+// # Latte JS Compiler
 
-var esprima = require("../lib/esprima-latte"),
+var 
+	// A modified version of Esprima is used to parse the input
+	// and produce the AST.
+	esprima = require("../lib/esprima-latte"),
+
+	// Escodegen is used to produce the output JavaScript.
 	escodegen = require("escodegen"),
+
 	transform = require("../lib/transform"),
 	es = require('event-stream'),
 	fs = require('fs'),
@@ -9,35 +16,45 @@ var esprima = require("../lib/esprima-latte"),
 	glob = require("glob"),
 	util = require('util');
 
+
+// Streaming API
+// -------------
+
+module.exports = compiler;
+
+// ### Single file/interactive
 function compiler(options) {
 	options = options || {};
 	var interactive = options.interactive,
 		encoding = options.encoding || 'utf8';
 
+	// Chunks of code sent to the compiler are buffered. These
+	// could be coming from a pipe, a file, or a REPL.
 	var buf = [], ending = false;
-	function compileBuffered() {
-		var output = compile(buf.join(""), options);
-		buf = [];
-		return output;
-	}
 
 	var stream = es.through (function (data) {
+
+		// If a special EOF chunk is sent, the compiler buffer is reset.
+		// *This is hacky and probably unnecessary - why not just create a new compiler?*
 		if (data == compiler.EOF) {
-			// reset
 			buf = [];
 			return;
 		}
 
 		buf.push(data);
 
+		// When in interactive mode (i.e. a REPL), try and compile after
+		// each chunk (i.e. line) is recieved.
 		if ( interactive ) {
 			try {
 				this.emit('data', compileBuffered())
 			} catch (e) {
-				// Wait for more data
+				// If compilation fails in interactive mode, just wait for more data.
+				// TODO: properly detect genuine syntax errors, and reset the buffer.
 			}
 		}
 	}, function end() {
+		// At the end of the stream, compile what we have in the buffer.
 		try {
 			this.emit('data', compileBuffered());
 		} catch (e) {
@@ -45,14 +62,26 @@ function compiler(options) {
 		}
 
 		this.emit('end');
-	})
+	});
+
+	function compileBuffered() {
+		var output = compile(buf.join(""), options);
+
+		// After a successful compile, the buffer is reset. 
+		buf = [];
+		return output;
+	}
 	
 	return stream;
 }
-module.exports = compiler;
 compiler.EOF = '\u0003';
 
+
+// ### Compiling a stream of files
+// Takes a stream of file names/paths, separated by newlines, and compiles each.
 compiler.files = function (options) {
+
+	// Paths are relative to the current directory, and inputDir/outputDir parameters.
 	var inputDir = path.join(process.cwd(), options.inputDir),
 		outputDir = path.join(process.cwd(), options.outputDir);
 
@@ -63,7 +92,10 @@ compiler.files = function (options) {
 			if (!file) return cb();
 
 			var filePath = path.join(inputDir, file),
+
+				// .latte file extension is replaced by .js
 				output = file.replace('.latte', '.js'),
+
 				outputPath = path.join(outputDir, output);
 
 			mkdirp(path.dirname(outputPath), null, function (err) {
@@ -92,6 +124,11 @@ compiler.files = function (options) {
 }
 
 
+
+// Non-streaming API
+// -----------------
+
+// ### Compile a source string
 function compile(source, options) {
 	var ast = esprima.parse(source);
 
@@ -111,7 +148,8 @@ function compile(source, options) {
 }
 compiler.compile = compile;
 
-
+// ### Compile a file
+// Returns a stream of the compiled source
 function compileFile(file, options) {
 	var compilerStream = compiler(options);
 	return fs.createReadStream(file)
@@ -132,6 +170,8 @@ function compileFiles(files, options) {
 }
 compiler.compileFiles = compileFiles;
 
+
+// ### Compile a directory of .latte files
 function compileDir(inputDir, outputDir, options) {
 	options.inputDir = inputDir;
 	options.outputDir = outputDir;
@@ -154,6 +194,12 @@ function compileDir(inputDir, outputDir, options) {
 	return fileCompiler;
 }
 compiler.compileDir = compileDir;
+
+
+
+// Testing
+// -------
+// If running the module directly, start the REPL
 
 if ( require.main == module ) {
 	require("./repl")();

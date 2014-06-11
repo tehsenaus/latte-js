@@ -1,0 +1,91 @@
+// # latte - Command Line
+
+// Usage
+// -----
+
+var optimist = require('optimist')
+	.usage('Latte.js compiler.\nUsage: latte [options] [--] files...')
+    .boolean(['c', 'v', 'd', 'help', 'version', 'debug'])
+    .alias('c', 'compile')
+    .alias('o', 'output')
+    .alias('v', 'verbose')
+    .describe('c', 'Compile input files. If not specified, evaluates the files.')
+    .describe('o', 'Output directory, to be used with --compile.')
+    .describe('version', 'Show version')
+, argv = optimist.argv;
+
+if ( argv.help ) {
+	optimist.showHelp();
+	process.exit(-1);
+}
+
+if ( argv.version ) {
+	console.log(require("../package.json").version);
+	process.exit(0);
+}
+
+
+
+var compiler = require("./compiler"),
+	fs = require("fs");
+
+var files = argv._;
+
+var compilerOptions = {
+	outputDir: argv.o,
+	debug: argv.debug
+};
+
+if ( !files.length ) {
+	// ### REPL
+	// Start on a TTY with no arguments
+	if ( process.stdin.isTTY )  {
+		require('../lib/repl')();
+	} else {
+		// ### Pipe Mode
+		// Takes latte source from stdin, print JS source to stdout
+		process.stdin.pipe(compiler(compilerOptions)).pipe(process.stdout);
+	}
+
+// ### Compile a directory of .latte files
+} else if ( files[0][files[0].length-1] == '/' ) {
+
+	var compiledFiles = compiler.compileDir(files[0], argv.o, compilerOptions);
+	compiledFiles.on('error', function (e) {
+		console.error(e);
+		process.exit(-1);
+	})
+	compiledFiles.pipe(process.stdout);
+
+// ### Compile a list of files
+} else if ( argv.c ) {
+	compiler.compileFiles(files, compilerOptions)
+
+// ### Run a script in-process
+} else {
+
+	// Implementation follows example of CoffeeScript:
+	// http://coffeescript.org/documentation/docs/coffee-script.html#section-9
+	
+	process.argv = process.argv.slice(1);
+
+	var file = files[0];
+	var input = fs.readFileSync(file, 'utf8');
+
+	if ( input.lastIndexOf('#!', 0) === 0 ) {
+		input = input.slice(input.indexOf('\n'));
+	}
+
+	var output = compiler.compile(input, compilerOptions);
+
+	var mainModule = require.main;
+
+	mainModule.filename = fs.realpathSync(file);
+	mainModule.paths = require('module')._nodeModulePaths(file);
+
+	Object.keys(require.cache).forEach(function (k) {
+		delete require.cache[k];
+	});
+	
+	mainModule._compile(output, mainModule.filename)
+}
