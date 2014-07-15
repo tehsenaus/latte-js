@@ -9,7 +9,7 @@ describe('Generators', function () {
 		function *g() {
 			yield 42;
 		}
-		g().next().should.equal(42);
+		g().next().value.should.equal(42);
 	})
 
 	it('can accept values on yield', function () {
@@ -18,8 +18,8 @@ describe('Generators', function () {
 			yield "bye";
 		}
 		var i = g();
-		i.next().should.equal(42);
-		i.send("hello").should.equal("bye");
+		i.next().value.should.equal(42);
+		i.send("hello").value.should.equal("bye");
 	})
 
 	it('works with conditionals', function () {
@@ -29,9 +29,9 @@ describe('Generators', function () {
 			yield "bye";
 		}
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		v.should.equal('Meee');
-		i.send(v).should.equal("bye");
+		i.send(v).value.should.equal("bye");
 	})
 
 	it('doesn\'t evaluate false conditional', function () {
@@ -43,7 +43,7 @@ describe('Generators', function () {
 			yield "bye";
 		}
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		yielded = true;
 	})
 
@@ -55,9 +55,9 @@ describe('Generators', function () {
 			yield "bye";
 		}
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		v.should.equal('Meee');
-		i.send(v).should.equal("bye");
+		i.send(v).value.should.equal("bye");
 	})
 
 	it('supports short circuit evaluation', function () {
@@ -69,7 +69,7 @@ describe('Generators', function () {
 			yield "bye";
 		}
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		yielded = true;
 		v.should.equal('bye');
 	})
@@ -94,9 +94,9 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		v.should.equal('Meee');
-		i.send(v).should.equal("bye");
+		i.send(v).value.should.equal("bye");
 	})
 
 	it('works with if statement condition', function () {
@@ -109,9 +109,9 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		v.should.equal(true);
-		i.send(v).should.equal("good");
+		i.send(v).value.should.equal("good");
 	})
 
 	it('works with nested if statement', function () {
@@ -136,11 +136,11 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		var v = i.next();
+		var v = i.next().value;
 		v.should.equal('Meee');
-		v = i.send(v);
+		v = i.send(v).value;
 		v.should.equal("Me again");
-		i.send(v).should.equal("bye");
+		i.send(v).value.should.equal("bye");
 	})
 
 
@@ -156,9 +156,9 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		i.next().should.equal(0);
-		i.next().should.equal(2);
-		i.next().should.equal(4);
+		i.next().value.should.equal(0);
+		i.next().value.should.equal(2);
+		i.next().value.should.equal(4);
 	})
 
 	it('works with while statement condition', function () {
@@ -171,9 +171,9 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		i.next().should.equal(0);
-		i.send(5).should.equal(1);
-		i.next(10).should.equal('done');
+		i.next().value.should.equal(0);
+		i.send(5).value.should.equal(1);
+		i.next().value.should.equal('done');
 	})
 
 	it('works with nested while statement', function () {
@@ -190,12 +190,12 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		i.next().should.equal(0);
-		i.next().should.equal(0);
-		i.next().should.equal(1);
-		i.next().should.equal(2);
-		i.next().should.equal(2);
-		i.next().should.equal(4);
+		i.next().value.should.equal(0);
+		i.next().value.should.equal(0);
+		i.next().value.should.equal(1);
+		i.next().value.should.equal(2);
+		i.next().value.should.equal(2);
+		i.next().value.should.equal(4);
 	})
 
 
@@ -221,9 +221,9 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		i.next().should.equal('a');
-		i.next().should.equal('b');
-		i.next().should.equal('c');
+		i.next().value.should.equal('a');
+		i.next().value.should.equal('b');
+		i.next().value.should.equal('c');
 	})
 	
 	it('works with nested for-of statement', function () {
@@ -236,10 +236,10 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		i.next().should.equal('ax');
-		i.next().should.equal('ay');
-		i.next().should.equal('bx');
-		i.next().should.equal('by');
+		i.next().value.should.equal('ax');
+		i.next().value.should.equal('ay');
+		i.next().value.should.equal('bx');
+		i.next().value.should.equal('by');
 	})
 
 	it('works with empty nested for-of statement', function () {
@@ -252,11 +252,6 @@ describe('Generators', function () {
 		}
 
 		var i = g();
-		try {
-			i.next();
-			throw "Shouldn't return any elements";
-		} catch (e) {
-			e.should.equal(StopIteration);
-		}
+		i.next().done.should.exist;
 	})
 })

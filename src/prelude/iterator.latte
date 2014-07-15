@@ -1,20 +1,13 @@
-// Iterator polyfills
-if ( typeof StopIteration === "undefined" ) {
-	var StopIteration = "StopIteration";
-}
 
 // Iterator wrapper, to avoid using try/catch at usage sites
 function __Iterator(v) {
 	this.iterator = v.iterator();
 }
 __Iterator.prototype.hasNext = function () {
-	try {
-		this._next = this.iterator.next();
-		return true;
-	} catch (e) {
-		if ( e === StopIteration ) return false;
-		throw e;
-	}
+	var n = this.iterator.next();
+	if ( n.done ) return false;
+	this._next = n.value;
+	return true;
 }
 __Iterator.prototype.next = function () {
 	return this._next;

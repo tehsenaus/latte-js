@@ -1,6 +1,6 @@
 {
   "name": "latte",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "description": "JavaScript, with a little milk and sugar",
   "main": "index.js",
   "bin": {
@@ -48,6 +48,7 @@
     "grunt-mocha-test": "~0.6.3",
     "blanket": "~1.1.5",
     "q": "~0.9.7",
-    "grunt-groc": "~0.4.5"
+    "grunt-groc": "~0.4.5",
+    "grunt-benchmark": "~0.3.0"
   }
 }

@@ -169,6 +169,14 @@ module.exports = {
         }
 	},
 
+	newExpr: function (callee, arguments) {
+		return {
+			type: 'NewExpression',
+			callee: this.ident(callee),
+			arguments: arguments
+		}
+	},
+
 	not: function (expr) {
 		return {
             "type": "UnaryExpression",

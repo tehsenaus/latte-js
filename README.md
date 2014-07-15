@@ -114,6 +114,12 @@ for (let i in [...]) {
 
 ## Changes
 
+### 0.4.0
+Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
+Added benchmarks (just for generators, initially).
+Optimised generators for tail call emulation use case - performance is comparable to trampoline.
+
+
 ### 0.3.5
 Allow monad binds in for loops.
 Allow monad binds in test/update expressions in all supported control structures.

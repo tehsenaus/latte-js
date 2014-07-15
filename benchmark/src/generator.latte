@@ -1,0 +1,66 @@
+
+function sum_rec() {
+	function sum(n, a) {
+		return n > 0 ? sum(n - 1, n + (a || 0)) : a;
+	}
+
+	sum(10000);
+}
+
+function sum_tco() {
+	var sum = recur(function (n, a) {
+		return n > 0 ? sum(n - 1, n + (a || 0)) : a;
+	})
+
+	sum(10000);
+
+	// https://github.com/Gozala/js-tail-call
+	function recur(f) {
+	  var result, active = false, accumulated = []
+	  return function accumulator() {
+	    accumulated.push(arguments);
+
+	    if (!active) {
+	      active = true
+	      while (accumulated.length) result = f.apply(this, accumulated.shift())
+	      active = false
+	      return result
+	    }
+	  }
+	}
+}
+
+function sum_gen() {
+	var sum = rec(function *sum_r(n, a) {
+		yield (n > 0 ? sum_r(n - 1, n + (a || 0)) : a);
+	})
+
+	sum(10000);
+
+
+	function rec(f) {
+		var active = false;
+		return function () {
+            var r = f.apply(this, arguments);
+
+			if (!active) {
+				active = true;
+				while( r.next ) {
+					r = r.next().value;
+				}
+				active = false;
+			}
+			return r;
+		}
+	}
+}
+
+
+module.exports = {
+	name: 'Generator',
+	tests: {
+		'recursion': sum_rec,
+		'tail call (baseline)': sum_tco,
+		'generator': sum_gen
+	}
+};

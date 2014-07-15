@@ -7,22 +7,19 @@ module.exports = function(grunt) {
       build: {
         inputDir: 'src/',
         outputDir: 'lib/'
-      },
-      buildTest: {
-        inputDir: 'test/src/',
-        outputDir: 'test/out/'
       }
     },
     shell: {
-      build: {
-        command: 'node_modules\\.bin\\latte -c src/ -o lib/',
+      buildTest: {
+        command: 'node bin/latte -c test/src/ -o test/out/',
         options: {
+            stdout: true,
             stderr: true,
             failOnError: true
         }
       },
-      buildTest: {
-        command: 'node bin/latte -c test/src/ -o test/out/',
+      buildBenchmark: {
+        command: 'node bin/latte -c benchmark/src/ -o benchmark/out/',
         options: {
             stdout: true,
             stderr: true,
@@ -59,6 +56,13 @@ module.exports = function(grunt) {
       options: {
         "out": "doc/"
       }
+    },
+
+    runBenchmark: {
+      all: {
+        src: ['benchmark/out/**/*.js'],
+        dest: 'benchmark.csv'
+      }
     }
   });
 
@@ -66,6 +70,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-mocha-test');
   grunt.loadNpmTasks('latte');
   grunt.loadNpmTasks('grunt-groc');
+  grunt.loadNpmTasks('grunt-benchmark');
 
   // Add in support for latte
   require('grunt-groc/node_modules/groc/lib/languages').JavaScript.nameMatchers.push('.latte');
@@ -76,4 +81,7 @@ module.exports = function(grunt) {
 
   // Default task(s).
   grunt.registerTask('default', ['build', 'test', 'groc']);
+
+  grunt.renameTask('benchmark', 'runBenchmark');
+  grunt.registerTask('benchmark', ['build', 'shell:buildBenchmark', 'runBenchmark'])
 };

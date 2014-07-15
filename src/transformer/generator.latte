@@ -7,6 +7,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 	traverse: function (ast) {
 		ast = this.super.traverse(ast);
 		if ( ast.hasGenerators ) {
+			ast['requires iterator-value prelude'] = true;
 			ast['requires generator prelude'] = true;
 		}
 		return ast;
@@ -359,7 +360,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		context.generator = lastGenerator;
 		context.ast.hasGenerators = true;
 		
-		return gen.block( currBlock.renderWithContinuation('__stop') );
+		return gen.block( currBlock.renderWithContinuation(STOP_GENERATOR) );
 	},
 
 	generator: function (m, context) {
@@ -370,15 +371,16 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		})
 
 		m.body.body = [ gen.ret(
-			gen.call(gen.member('__gen', 'call'), [ gen.ident('this'), gen.fn([
+			gen.newExpr('__Generator', [ gen.ident('this'), gen.fn([
 				body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
-			], ['__yield','__stop']) ]) 
+			], [GENERATOR_INSTANCE]) ]) 
 		)];
 
 		m.generator = false;
 		return m;
 	}
 })
+
 
 
 
@@ -466,7 +468,9 @@ function basicBlock (context, name, opts) {
 
 			// Any trailing statements are executed before calling the continuation.
 			if ( stmts.length ) {
-				if ( r.type == 'CallExpression' ) {
+				if ( r === STOP_GENERATOR ) {
+					r = gen.block([ r ]);
+				} else if ( r.type == 'CallExpression' ) {
 					r = gen.block([ gen.ret(r) ])
 				}
 
@@ -478,9 +482,16 @@ function basicBlock (context, name, opts) {
 			r = yields.reduceRight(
 				(s, y) => gen.block( y.stmts.concat([
 
-					gen.ret(gen.call(YIELD, [
-						y.expr, gen.arrow([y.e, y.t], s)
-					]))
+					gen.ret(gen.call(YIELD,
+						// Optimisation:
+						// If continuation is just a STOP, don't create a needless closure
+						( s === STOP_GENERATOR
+							? [ GENERATOR_INSTANCE, y.expr ]
+							: [
+								GENERATOR_INSTANCE, y.expr, gen.arrow([y.e, y.t], s)
+							]
+						)
+					))
 				]) ),
 				
 				r
@@ -570,7 +581,12 @@ function genGeneratorExpr(expr, context) {
 }
 
 
-var YIELD = '__yield';
+var YIELD = '__generatorYield',
+	STOP = '__generatorStop',
+	GENERATOR_INSTANCE = '__generator',
+	STOP_GENERATOR = gen.block([
+		gen.ret( gen.call(STOP, [GENERATOR_INSTANCE]) )
+	]);
 
 function dbg(v) {
 	try {

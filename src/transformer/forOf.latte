@@ -11,6 +11,7 @@ var iteratorSnip = fs.readFileSync(
 
 var forOfTransformer = module.exports = traverser({
 	forOfStmt: function (stmt, context) {	
+		context.ast['requires iterator-value prelude'] = true;
 		context.ast['requires iterator prelude'] = true;
 
 		var body = esprima.parse(iteratorSnip).body;

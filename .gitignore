@@ -19,5 +19,6 @@ ast.debug.js
 /lib
 /doc
 /test/out/
+/benchmark/out/
 /npm-cache
 /coverage.html

@@ -1,50 +1,58 @@
 // # Generator Prelude
 
-// StopIteration is used to signal the end of generator execution.
-if ( typeof StopIteration === "undefined" ) {
-	this.StopIteration = "StopIteration";
+function __Generator(me, fn) {
+	this.me = me;
+	this.fn = fn;
+	this.born = false;
+	this.closed = false;
+}
+function __generatorYield(me, v, next) {
+	me.fn = next;
+	return new __IteratorValue(v, false);
+}
+function __generatorStop(me, v, next) {
+	me.closed = true;
+	return __IteratorValue.done;
 }
 
-function __gen(fn) {
-	var closed, born, me = this;
+__Generator.prototype = {
+	// Generators implement the iterator protocol, and they are
+	// 'one-shot' iterators.
+	iterator: function () {
+		return this;
+	},
+	
+	next: function () {
+		return this.send();
+	},
+	send: function (v) {
+		// if ( this.closed )
+		// 	throw new Error('generator is closed!');
 
-	return {
-		// Generators implement the iterator protocol, and they are
-		// 'one-shot' iterators.
-		iterator: function () {
-			return this;
-		},
-		
-		next: function () {
-			return this.send();
-		},
-		send: function (v) {
-			if ( closed )
-				throw new Error('generator is closed!');
-
-			if ( !born ) {
-				var v = fn.call(me, function __yield(v, next) {
-					fn = next;
-					return v;
-				}, function __stop() {
-					closed = true;
-					throw StopIteration;
-				});
-				born = true;
-				return v;
-			}
-
-			return fn.call(me, null, v);
-		},
-		"throw": function (e) {
-			if ( closed )
-				throw new Error('generator is closed!');
-
-			if ( !born ) {
-				throw e;
-			}
-
-			return fn(e);
+		if ( !this.born ) {
+			this.born = true;
+			return this.fn.call(this.me, this);
 		}
+		if ( !this.fn ) {
+			me.closed = true;
+			return __IteratorValue.done;
+		}
+
+		return this.fn.call(this.me, null, v);
+	},
+
+	"throw": function (e) {
+		if ( this.closed )
+			throw new Error('generator is closed!');
+
+		if ( !this.born ) {
+			throw e;
+		}
+
+		return this.fn.call(this.me, e);
 	}
+}
+
+function __gen(me, fn) {
+	return new __Generator(me, fn);
 }
