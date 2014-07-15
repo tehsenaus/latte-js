@@ -169,6 +169,15 @@ module.exports = {
         }
 	},
 
+	binary: function (left, op, right) {
+		return {
+			type: 'BinaryExpression',
+			operator: op,
+			left: this.ident(left),
+			right: this.ident(right)
+		}
+	},
+
 	newExpr: function (callee, arguments) {
 		return {
 			type: 'NewExpression',

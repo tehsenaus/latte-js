@@ -1,13 +1,12 @@
-function __monad(m, lv) {
+function __monad(m, value) {
 	while (true) {
-		try {
-			var v = m.send(lv);
-			if ( v && typeof v.then === "function" ) {
-				return v.then(nv => __monad(m, nv))
-			}
-		} catch (e) {
-			if ( e === StopIteration ) return lv;
-			throw e;
+		var bind = m.send(value);
+		if ( bind.done ) return value;
+
+		value = bind.value;
+
+		if ( value && typeof value.then === "function" ) {
+			return value.then(nv => __monad(m, nv))
 		}
 	}
 }

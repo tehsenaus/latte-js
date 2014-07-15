@@ -100,9 +100,9 @@ function traverser(args) {
 			    case 'ForStatement': 
 			    	return me.forStmt(stmt, context)
 			    case 'ForInStatement':
-			    	return me.forInStmt(stmt, context)
+			    	return me.forInOfStmt(stmt, context)
 			    case 'ForOfStatement':
-			    	return me.forOfStmt(stmt, context)
+			    	return me.forInOfStmt(stmt, context)
 
 			    case 'WhileStatement':
 			    case 'DoWhileStatement':
@@ -172,7 +172,7 @@ function traverser(args) {
 	}
 	
 	me._forInOfStmt = (stmt, context) => {
-		//stmt.right = me.expr(stmt.right, context)
+		stmt.right = me.expr(stmt.right, context)
 		stmt.body = me.stmt(stmt.body, context)
 		return stmt;
 	}

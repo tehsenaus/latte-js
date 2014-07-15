@@ -23,8 +23,24 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		return bound;
 	},
 
-	
 
+	varDecl: function (stmt, context) {
+		if ( stmt.declarations.length > 1 && stmtHasYields(stmt) ) {
+			
+			// Multiple variable decl with yields - 
+			// must split this up into separate stmts otherwise we may
+			// get undefined references
+
+			stmt = gen.block([
+				gen.varDecl(d.id, d.init, stmt)
+				for (d of stmt.declarations)
+			])
+			return this.stmt(stmt, context);
+		}
+
+		return this.super.varDecl(stmt, context);
+	},
+	
 	ifStmt: function (stmt, context) {
 		var aHasYields = stmtHasYields(stmt.consequent)
 			bHasYields = stmt.alternate && stmtHasYields(stmt.alternate);
@@ -67,8 +83,43 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 	forInOfStmt: function (stmt, context) {
 
-		if ( !stmt.generatoric && stmtHasYields(stmt.body) ) {
-			throw new Error('Yields not supported in for statement... yet!');
+		if ( exprHasYields(stmt.right) ) {
+			stmt.right = this.expr(stmt.right, context);
+		}
+
+		if ( stmtHasYields(stmt.body) ) {
+
+			// Convert to for loop
+			context.ast['requires for-in-converter prelude'] = true;
+
+			var keys = context.temp('keys'),
+				idx = context.temp('i');
+
+			stmt.left.declarations[0].init = gen.member(keys, gen.ident(idx), { computed: true });
+
+			stmt = gen.block([
+				gen.varDecl(
+					keys, /*=*/ gen.call('__convertForIn', [stmt.right])
+				),
+				gen.varDecl(
+					idx, gen.val(0)
+				),
+				gen.whileStmt(
+					gen.binary(idx, '<', gen.member(keys, 'length')),
+					gen.block([
+						stmt.left,
+						stmt.body,
+						gen.exprStmt(gen.assign(
+							idx, /*=*/ gen.binary(idx, '+', gen.val(1))
+						))
+					])
+				)
+			]);
+
+			stmt.body[2].update = stmt.body[2].body.body[2];
+
+			this.stmt(stmt, context);
+			return gen.empty;
 		}
 
 		// Doesn't contain yields, but may contain other generators
@@ -97,6 +148,8 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 					gen.exprStmt(stmt.update)
 				]))
 			])
+
+			stmt.body[1].update = stmt.body[1].body.body[1];
 			
 			return this.stmt(stmt, context);
 		}
@@ -134,12 +187,36 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 			
 			var rec = context.temp('loop');
 
+
+			// In loop body, replace 'continue' with calls to
+			// recursive closure, and 'break' with flag
+
+			var continueStmt = gen.block([
+				stmt.update || gen.empty,
+				gen.ret(gen.callWithThis(rec))
+			]);
+
+			stmt.body = replaceContinuesInStmt(stmt.body, continueStmt);
+
+			if ( stmtHasBreak(stmt.body) ) {
+				var flag = context.temp('flag');
+				stmt.test = gen.binary(flag, '&&', stmt.test);
+				
+				this.stmt(gen.varDecl(flag, gen.val(true)), context);
+
+				stmt.body = replaceBreaksInStmt(stmt.body, gen.block([
+					gen.exprStmt(gen.assign(flag, gen.val(false))),
+					continueStmt
+				]));
+			}
+
+
 			context.generator.withcc(callcc => {
 
 				this.stmt( gen.ifStmt(
 					stmt.test,
 					gen.block(stmt.body).body.concat([
-						gen.ret( gen.call(rec) )
+						gen.ret( gen.callWithThis(rec) )
 					])
 				), context );
 
@@ -155,12 +232,12 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		}
 
 		// Doesn't contain yields, but may contain other generators
-		var oldMonad = context.monad;
+		var oldGenerator = context.generator;
 		context.generator = null;
 		
 		stmt = this.super.whileDoWhileStmt(stmt, context);
 		
-		context.generator = oldMonad;
+		context.generator = oldGenerator;
 
 		return stmt;
 	},
@@ -578,6 +655,53 @@ function genGeneratorExpr(expr, context) {
 	r.calleeFn.generator = true;
 	r.calleeFn.internalGenerator = context.generator;
 	return r;
+}
+
+
+var hasBreakTraverser = createBreakContinueTraverser(['BreakStatement'])
+
+function stmtHasBreak(stmt) {
+	return hasBreakTraverser.stmtHasBreakContinue(stmt);
+}
+function replaceBreaksInStmt(stmt, replacement) {
+	var tr = createBreakContinueTraverser(['BreakStatement']);
+	tr.breakContinue = () => replacement;
+	return tr.stmt(stmt, tr.context());
+}
+function replaceContinuesInStmt(stmt, replacement) {
+	var tr = createBreakContinueTraverser(['ContinueStatement']);
+	tr.breakContinue = () => replacement;
+	return tr.stmt(stmt, tr.context());
+}
+
+function createBreakContinueTraverser(types) {
+	return traverser({
+
+		stmtHasBreakContinue: function (stmt) {
+			var context = this.context();
+			context.hasBreakContinue = false;
+			this.stmt(stmt, context);
+			return context.hasBreakContinue;
+		},
+
+		stmt: function (stmt, context) {
+			if ( types.indexOf(stmt.type) >= 0 ) {
+				stmt = this.breakContinue(stmt, context);
+			}
+			return this.super.stmt(stmt, context);
+		},
+
+		breakContinue: function (stmt, context) {
+			context.hasBreakContinue = true;
+			return stmt;
+		},
+
+		// Stop points
+		forStmt: x => x,
+		forInStmt: x => x,
+		whileDoWhileStmt: x => x,
+		func: x => x
+	});
 }
 
 

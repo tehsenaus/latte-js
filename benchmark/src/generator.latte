@@ -1,10 +1,12 @@
 
+var N = 15500;
+
 function sum_rec() {
 	function sum(n, a) {
 		return n > 0 ? sum(n - 1, n + (a || 0)) : a;
 	}
 
-	sum(10000);
+	sum(N);
 }
 
 function sum_tco() {
@@ -12,7 +14,7 @@ function sum_tco() {
 		return n > 0 ? sum(n - 1, n + (a || 0)) : a;
 	})
 
-	sum(10000);
+	sum(N);
 
 	// https://github.com/Gozala/js-tail-call
 	function recur(f) {
@@ -35,7 +37,7 @@ function sum_gen() {
 		yield (n > 0 ? sum_r(n - 1, n + (a || 0)) : a);
 	})
 
-	sum(10000);
+	sum(N);
 
 
 	function rec(f) {
@@ -60,7 +62,7 @@ module.exports = {
 	name: 'Generator',
 	tests: {
 		'recursion': sum_rec,
-		'tail call (baseline)': sum_tco,
+		'trampoline': sum_tco,
 		'generator': sum_gen
 	}
 };

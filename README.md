@@ -118,7 +118,8 @@ for (let i in [...]) {
 Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
 Added benchmarks (just for generators, initially).
 Optimised generators for tail call emulation use case - performance is comparable to trampoline.
-
+Monads now implemented via generators - reusing control flow logic, and to allow use of native
+generators implementation where available (this will be a command line flag later on).
 
 ### 0.3.5
 Allow monad binds in for loops.

@@ -26,7 +26,6 @@ var monadTransformer = module.exports = traverser({
 
 	unary: function (expr, context) {
 		if ( expr.operator === "<<" ) {
-			console.log('YIELD')
 			if (!context.monad) {
 				throw new Error('Unexpected "<<": not in monad block!\nIn:' + dbg(expr));
 			}
@@ -40,8 +39,6 @@ var monadTransformer = module.exports = traverser({
 	},
 
 	monad: function (m, context) {
-		console.log('MONAD');
-
 		var lastMonad = context.monad;
 		var monad = context.monad = true;
 
@@ -52,8 +49,6 @@ var monadTransformer = module.exports = traverser({
 
 		var g = gen.closure(body);
 		g.calleeFn.generator = true;
-
-		console.log(dbg(g));
 
 		return gen.call('__monad', [ g ])
 	}
