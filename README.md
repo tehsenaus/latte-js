@@ -115,23 +115,23 @@ for (let i in [...]) {
 ## Changes
 
 ### 0.4.0-dev
-Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
-Added benchmarks (just for generators, initially).
-Optimised generators for tail call emulation use case - performance is comparable to trampoline.
-Monads now implemented via generators - reusing control flow logic, and to allow use of native
-generators implementation where available (this will be a command line flag later on).
-Monads now properly support return statement (fixes #9).
-Added support for array spreads (via https://github.com/square/es6-spread).
-Added support for rest params (via https://github.com/thomasboyt/es6-rest-params).
+- Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
+- Added benchmarks (just for generators, initially).
+- Optimised generators for tail call emulation use case - performance is comparable to trampoline.
+- Monads now implemented via generators - reusing control flow logic, and to allow use of native
+  generators implementation where available (this will be a command line flag later on).
+- Monads now properly support return statement (fixes #9).
+- Added support for array spreads (via https://github.com/square/es6-spread).
+- Added support for rest params (via https://github.com/thomasboyt/es6-rest-params).
 
 
 ### 0.3.5
-Allow monad binds in for loops.
-Allow monad binds in test/update expressions in all supported control structures.
+- Allow monad binds in for loops.
+- Allow monad binds in test/update expressions in all supported control structures.
 
 ### 0.3.4
-Fixed break and continue in monad blocks.
-Fixed issue with monadic binds in a multiple-var-decl statement resulting in undefined references.
+- Fixed break and continue in monad blocks.
+- Fixed issue with monadic binds in a multiple-var-decl statement resulting in undefined references.
 
 ### 0.3.3
 Fixed issue with using functions as part of a monad bind.
@@ -140,9 +140,9 @@ Fixed issue with using functions as part of a monad bind.
 Various fixes.
 
 ### 0.3.1
-Support for monads.
-Initial support for ES6 generators.
-For-of statement.
+- Support for monads.
+- Initial support for ES6 generators.
+- For-of statement.
 
 ### 0.2.7
 Array comprehension improvement
@@ -151,18 +151,18 @@ Array comprehension improvement
 Clear module cache when evaluating script in-process
 
 ### 0.2.5
-Array comprehension with variables
-Set __dirname properly when evaluating script in-process
+- Array comprehension with variables
+- Set __dirname properly when evaluating script in-process
 
 ### 0.2.4
-Array comprehensions
-Command line improvements
-For-in-if statement: `for (x in y if (x.is('awesome')))`
+- Array comprehensions
+- Command line improvements
+- For-in-if statement: `for (x in y if (x.is('awesome')))`
 
 ### 0.2.3
-Array destructuring
-Let statement
-Support for more AST nodes (stops the noisy output)
+- Array destructuring
+- Let statement
+- Support for more AST nodes (stops the noisy output)
 
 ### 0.2.2
 Basic quasi-literals support
