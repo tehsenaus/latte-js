@@ -13,6 +13,14 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		return ast;
 	},
 
+	yieldExpr: function (expr, context) {
+		if (!context.generator) {
+			throw new Error('Unexpected yield: not in generator!');
+		}
+
+		return this._yield(expr.argument, context);
+	},
+
 	_yield: function (expr, context) {
 		var oldIsInYield = context.isInYield;
 		context.isInYield = true
@@ -23,6 +31,19 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 		return bound;
 	},
 
+
+	returnStmt: function (stmt, context) {
+		stmt = this.super.returnStmt(stmt, context);
+
+		if ( context.topLevelGenerator && !stmt.generatoric ) {
+			stmt.argument = gen.call(STOP,
+				stmt.argument ? [ GENERATOR_INSTANCE, stmt.argument ]
+					: [ GENERATOR_INSTANCE ]
+			);
+		}
+
+		return stmt;
+	},
 
 	varDecl: function (stmt, context) {
 		if ( stmt.declarations.length > 1 && stmtHasYields(stmt) ) {
@@ -193,7 +214,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 			var continueStmt = gen.block([
 				stmt.update || gen.empty,
-				gen.ret(gen.callWithThis(rec))
+				genRet(gen.callWithThis(rec))
 			]);
 
 			stmt.body = replaceContinuesInStmt(stmt.body, continueStmt);
@@ -216,12 +237,12 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 				this.stmt( gen.ifStmt(
 					stmt.test,
 					gen.block(stmt.body).body.concat([
-						gen.ret( gen.callWithThis(rec) )
+						genRet( gen.callWithThis(rec) )
 					])
 				), context );
 
 				return gen.block([
-					gen.ret( gen.callWithThis(rec) ),
+					genRet( gen.callWithThis(rec) ),
 					gen.fndecl([
 						callcc(gen.ident(null))
 					], [], rec)
@@ -275,22 +296,16 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 	func: function (stmt, context) {
 		// Inner functions have new context
-		var oldGenerator = context.generator;
-		context.generator = null;
+		var oldGenerator = context.generator,
+			oldTopLevelGenerator = context.topLevelGenerator;
+		context.generator = context.topLevelGenerator = null;
 
 		stmt = this.super.func(stmt, context);
 		
 		context.generator = oldGenerator;
+		context.topLevelGenerator = oldTopLevelGenerator;
 			
 		return stmt;
-	},
-
-	yieldExpr: function (expr, context) {
-		if (!context.generator) {
-			throw new Error('Unexpected yield: not in generator!');
-		}
-
-		return this._yield(expr.argument, context);
 	},
 
 	binary: function (expr, context) {
@@ -383,7 +398,7 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 
 		var currBlock = generatorBlock(context);
 
-		var generator = context.generator = {
+		var generator = context.generator = context.topLevelGenerator = {
 
 			// signals that any stements or expressions following this node needs to be
 			// extracted as a named continuation (i.e. if there are branches
@@ -447,9 +462,9 @@ var generatorTransformer = module.exports = traverser.explicit('generator', {
 			return this.super.generator(m, context);
 		})
 
-		m.body.body = [ gen.ret(
+		m.body.body = [ genRet(
 			gen.newExpr('__Generator', [ gen.ident('this'), gen.fn([
-				body.type.indexOf('Expression') > 0 ? gen.ret(body) : body
+				body.type.indexOf('Expression') > 0 ? genRet(body) : body
 			], [GENERATOR_INSTANCE]) ]) 
 		)];
 
@@ -548,7 +563,7 @@ function basicBlock (context, name, opts) {
 				if ( r === STOP_GENERATOR ) {
 					r = gen.block([ r ]);
 				} else if ( r.type == 'CallExpression' ) {
-					r = gen.block([ gen.ret(r) ])
+					r = gen.block([ genRet(r) ])
 				}
 
 				r.body = stmts.concat(r.body);
@@ -559,7 +574,7 @@ function basicBlock (context, name, opts) {
 			r = yields.reduceRight(
 				(s, y) => gen.block( y.stmts.concat([
 
-					gen.ret(gen.call(YIELD,
+					genRet(gen.call(YIELD,
 						// Optimisation:
 						// If continuation is just a STOP, don't create a needless closure
 						( s === STOP_GENERATOR
@@ -574,7 +589,7 @@ function basicBlock (context, name, opts) {
 				r
 			)
 
-			return r.type == 'CallExpression' ? gen.block([gen.ret(r)]) : r;
+			return r.type == 'CallExpression' ? gen.block([genRet(r)]) : r;
 		},
 
 		yield: (expr) => {
@@ -651,7 +666,7 @@ function genGenerator(stmts) {
 	})
 }
 function genGeneratorExpr(expr, context) {
-	var r = gen.closure([ gen.ret(expr) ]);
+	var r = gen.closure([ genRet(expr) ]);
 	r.calleeFn.generator = true;
 	r.calleeFn.internalGenerator = context.generator;
 	return r;
@@ -704,12 +719,18 @@ function createBreakContinueTraverser(types) {
 	});
 }
 
+function genRet() {
+	var stmt = gen.ret.apply(gen, arguments);
+	stmt.generatoric = true; // Stops the return stmt being transformed
+	return stmt;
+}
+
 
 var YIELD = '__generatorYield',
 	STOP = '__generatorStop',
 	GENERATOR_INSTANCE = '__generator',
 	STOP_GENERATOR = gen.block([
-		gen.ret( gen.call(STOP, [GENERATOR_INSTANCE]) )
+		genRet( gen.call(STOP, [GENERATOR_INSTANCE]) )
 	]);
 
 function dbg(v) {

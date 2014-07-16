@@ -313,4 +313,20 @@ describe('Monad Expression', function () {
 			done();
 		}
 	})
+
+
+
+	it('supports return statement', function (done) {
+		(do {
+			var called = false;
+			if ( << async('hello') == 'hello' ) {
+				return 'returned';
+			}
+			<< async('not returned');
+			return false;
+		}).then( v => {
+			v.should.equal('returned');
+			done()
+		} )
+	})
 })

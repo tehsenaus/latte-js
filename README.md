@@ -114,12 +114,16 @@ for (let i in [...]) {
 
 ## Changes
 
-### 0.4.0
+### 0.4.0-dev
 Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
 Added benchmarks (just for generators, initially).
 Optimised generators for tail call emulation use case - performance is comparable to trampoline.
 Monads now implemented via generators - reusing control flow logic, and to allow use of native
 generators implementation where available (this will be a command line flag later on).
+Monads now properly support return statement (fixes #9).
+Added support for array spreads (via https://github.com/square/es6-spread).
+Added support for rest params (via https://github.com/thomasboyt/es6-rest-params).
+
 
 ### 0.3.5
 Allow monad binds in for loops.

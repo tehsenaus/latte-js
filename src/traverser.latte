@@ -112,6 +112,7 @@ function traverser(args) {
 			    	return me.switchStmt(stmt, context)
 
 			    case 'ReturnStatement':
+			    	return me.returnStmt(stmt, context)
 			    case 'ThrowStatement':
 			    	return {
 			    		type: stmt.type,
@@ -215,6 +216,11 @@ function traverser(args) {
     	return stmt;
 	}
 
+	me.returnStmt = (stmt, context) => {
+		if (stmt.argument) stmt.argument = me.expr(stmt.argument, context);
+		return stmt;
+	}
+
 	me.varDecl = (stmt, context) => {
 		stmt.declarations = me.decls(stmt.declarations, context);
 		return stmt;
@@ -287,8 +293,10 @@ function traverser(args) {
 		    	return me.quasiLiteral(expr, context);
 		    case 'Literal':
 		    	break;
+		    case 'SpreadElement':
+		    	return me.spreadElement(expr, context);
 			default:
-				throw new Error("Unhandled expr: " + expr);
+				throw new Error("Unhandled expr: " + JSON.stringify(expr));
 		}
 		return expr;
 	}
@@ -368,6 +376,10 @@ function traverser(args) {
 	me.thisExpr = x => x;
 
 	me.quasiLiteral = x => { throw new Error('Unhandled quasi literal!') };
+
+	me.spreadElement = (expr, context) => {
+		return me.unary(expr, context);
+	}
 
 	me.super = {};
 

@@ -1,7 +1,7 @@
 function __monad(m, value) {
 	while (true) {
 		var bind = m.send(value);
-		if ( bind.done ) return value;
+		if ( bind.done ) return bind.value;
 
 		value = bind.value;
 

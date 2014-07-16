@@ -98,6 +98,9 @@ var transformers = [
 	forFilterTransformer,
 	require('./transformer/let'),
 
+	externalTransformer(require('es6-spread').transform),
+	externalTransformer(require('es6-rest-params').transform),
+
 	// Run a few passes
 	cleanupTransformer,
 	cleanupTransformer,
@@ -112,3 +115,9 @@ module.exports = function (ast) {
 
 	return ast;
 };
+
+function externalTransformer(transform) {
+	return {
+		traverse: transform
+	}
+}

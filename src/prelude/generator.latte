@@ -10,9 +10,9 @@ function __generatorYield(me, v, next) {
 	me.fn = next;
 	return new __IteratorValue(v, false);
 }
-function __generatorStop(me, v, next) {
+function __generatorStop(me, v) {
 	me.closed = true;
-	return __IteratorValue.done;
+	return v === (void 0) ? __IteratorValue.done : new __IteratorValue(v, true);
 }
 
 __Generator.prototype = {
@@ -26,8 +26,8 @@ __Generator.prototype = {
 		return this.send();
 	},
 	send: function (v) {
-		// if ( this.closed )
-		// 	throw new Error('generator is closed!');
+		if ( this.closed )
+			throw new Error('generator is closed!');
 
 		if ( !this.born ) {
 			this.born = true;
