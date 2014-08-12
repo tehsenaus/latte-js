@@ -123,7 +123,7 @@ for (let i in [...]) {
 - Monads now properly support return statement (fixes #9).
 - Added support for array spreads (via https://github.com/square/es6-spread).
 - Added support for rest params (via https://github.com/thomasboyt/es6-rest-params).
-
+- Added support for generating source maps (via https://github.com/benjamn/recast).
 
 ### 0.3.5
 - Allow monad binds in for loops.

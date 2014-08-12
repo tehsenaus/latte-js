@@ -3,20 +3,21 @@ var vm = require('vm'),
 	compiler = require('./compiler');
 
 module.exports = function () {
-	var c = compiler({ interactive: true }),
+	var c = compiler({ interactive: true, sourceFileName: 'asdf', sourceMapName: 'asdf' }),
 		isContinuation = false;
 
 	var repl = require("repl").start({
 		eval: function (cmd, context, filename, callback) {
 			if (!isContinuation) c.once('data', function (data, enc) {
 				try {
-					callback(null, vm.runInContext(data.toString(enc), context, filename));	
+					callback(null, vm.runInContext(data.code, context, filename));	
 				} catch (e) {
 					callback(e);
 				}
 				isContinuation = false;
 			});
 			isContinuation = true;
+
 			c.write(cmd.slice(1, cmd.length - 1));
 		}
 	})

@@ -38,9 +38,9 @@
     "mkdirp": "~0.3.5",
     "readable-stream": "~1.1.8",
     "event-stream": "~3.0.16",
-    "recast": "^0.5.17",
+    "recast": "~0.6.10",
     "es6-rest-params": "git+https://github.com/tehsenaus/es6-rest-params.git#remove-esprima-dep",
-    "es6-spread": "git+https://github.com/tehsenaus/es6-spread.git#remove-esprima-dep"
+    "es6-spread": "~0.1.0"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
@@ -53,8 +53,5 @@
     "q": "~0.9.7",
     "grunt-groc": "~0.4.5",
     "grunt-benchmark": "~0.3.0"
-  },
-  "bundledDependencies": [
-    "es6-rest-params", "es6-spread"
-  ]
+  }
 }

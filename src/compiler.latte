@@ -174,10 +174,17 @@ compiler.files = function (options) {
 
 // ### Compile a source string
 function compile(source, options) {
-	// The extended version of esprima-harmony is used, adding Latte.js syntax
-	options.esprima = options.esprima || esprima;
+	var recastOptions = {
+		// The extended version of esprima-harmony is used, adding Latte.js syntax
+		esprima: options.esprima || esprima,
 
-	var ast = recast.parse(source, options);
+		sourceFileName: options.sourceFileName,
+		sourceMapName: options.sourceMapName
+	};
+
+	source = source.trim();
+
+	var ast = recast.parse(source, recastOptions);
 
 	if ( options.debug ) {
 		fs.writeFileSync('ast.debug.js', util.inspect(ast, null, null));
@@ -189,7 +196,7 @@ function compile(source, options) {
 		fs.writeFileSync('ast.debug.transformed.js', util.inspect(ast, null, null));
 	}
 
-	return recast.print(ast, options);
+	return recast.print(ast, recastOptions);
 }
 compiler.compile = compile;
 
