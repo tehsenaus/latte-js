@@ -5,8 +5,10 @@ var
 	// and produce the AST.
 	esprima = require("../lib/esprima-latte"),
 
-	// Escodegen is used to produce the output JavaScript.
-	escodegen = require("escodegen"),
+	// Recast is used to produce the output JavaScript and source map.
+	types = require('./types'),
+	recast = require("recast"),
+	
 
 	transform = require("../lib/transform"),
 	es = require('event-stream'),
@@ -51,6 +53,7 @@ function compiler(options) {
 			} catch (e) {
 				// If compilation fails in interactive mode, just wait for more data.
 				// TODO: properly detect genuine syntax errors, and reset the buffer.
+				console.log(e, e.stack);
 			}
 		}
 	}, function end() {
@@ -80,10 +83,10 @@ compiler.EOF = '\u0003';
 // ### Compiling a stream of files
 // Takes a stream of file names/paths, separated by newlines, and compiles each.
 compiler.files = function (options) {
-
 	// Paths are relative to the current directory, and inputDir/outputDir parameters.
 	var inputDir = path.join(process.cwd(), options.inputDir),
-		outputDir = path.join(process.cwd(), options.outputDir);
+		outputDir = path.join(process.cwd(), options.outputDir),
+		mapDir = options.mapDir && path.join(process.cwd(), options.mapDir);
 
 	var stream;
 	return es.pipeline(
@@ -98,10 +101,38 @@ compiler.files = function (options) {
 
 				outputPath = path.join(outputDir, output);
 
+
+			// Create output directories
 			mkdirp(path.dirname(outputPath), null, function (err) {
 				if (err) return cb(err);
 
+				if ( mapDir ) {
+					mkdirp(path.dirname(path.join(mapDir, output)), null, function (err) {
+						if (err) return cb(err);
+						_compile();
+					});
+				} else {
+					_compile();
+				}
+			});
+
+
+			var _options = options;
+			function _compile() {
+				var options = {};
+				for ( var n in _options ) options[n] = _options[n];
+
 				stream.emit('data', output);
+
+				if ( mapDir ) {
+					var mapName = file.replace('.latte', '.map.json'),
+						mapFilePath = path.join(mapDir, mapName),
+						mapFileDir = path.dirname(mapFilePath);
+					options.sourceFileName = path.relative(
+						mapFileDir, path.join(options.inputDir, file));
+					options.sourceMapName = path.relative(
+						mapFileDir, path.join(options.outputDir, output));
+				}
 
 				var compiler = compileFile(filePath, options);
 
@@ -112,12 +143,25 @@ compiler.files = function (options) {
 					cb(file + ': ' + e);
 				});
 
-				compiler.pipe(fs.createWriteStream(
+				var codeStream;
+				compiler.pipe(codeStream = es.through(data => {
+					codeStream.emit('data', data.code);
+				})).pipe(fs.createWriteStream(
 					outputPath
 				).on('error', function (e) {
 					cb(file + ': ' + e);
 				}));
-			});
+
+				// Emit source maps
+				if ( mapDir ) {
+					var mapStream;
+					compiler
+					.pipe(mapStream = es.through(data => {
+						mapStream.emit('data', JSON.stringify(data.map));
+					}))
+					.pipe( fs.createWriteStream(mapFilePath) );
+				}
+			}
 		}),
 		es.join('\n')
 	)
@@ -130,21 +174,22 @@ compiler.files = function (options) {
 
 // ### Compile a source string
 function compile(source, options) {
-	var ast = esprima.parse(source);
+	// The extended version of esprima-harmony is used, adding Latte.js syntax
+	options.esprima = options.esprima || esprima;
+
+	var ast = recast.parse(source, options);
 
 	if ( options.debug ) {
 		fs.writeFileSync('ast.debug.js', util.inspect(ast, null, null));
 	}
 
-	ast = transform(ast);
+	ast.program = transform(ast.program);
 
 	if ( options.debug ) {
 		fs.writeFileSync('ast.debug.transformed.js', util.inspect(ast, null, null));
 	}
 
-	return escodegen.generate(ast, {
-		comment: true
-	});
+	return recast.print(ast, options);
 }
 compiler.compile = compile;
 

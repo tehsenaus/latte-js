@@ -8,9 +8,11 @@ var optimist = require('optimist')
     .boolean(['c', 'v', 'd', 'help', 'version', 'debug'])
     .alias('c', 'compile')
     .alias('o', 'output')
+    .alias('m', 'source-map')
     .alias('v', 'verbose')
     .describe('c', 'Compile input files. If not specified, evaluates the files.')
     .describe('o', 'Output directory, to be used with --compile.')
+    .describe('m', 'Output directory for source maps, to be used with --compile.')
     .describe('version', 'Show version')
 , argv = optimist.argv;
 
@@ -27,12 +29,14 @@ if ( argv.version ) {
 
 
 var compiler = require("./compiler"),
-	fs = require("fs");
+	fs = require("fs"),
+	es = require('event-stream');
 
 var files = argv._;
 
 var compilerOptions = {
 	outputDir: argv.o,
+	mapDir: argv.m,
 	debug: argv.debug
 };
 
@@ -44,7 +48,10 @@ if ( !files.length ) {
 	} else {
 		// ### Pipe Mode
 		// Takes latte source from stdin, print JS source to stdout
-		process.stdin.pipe(compiler(compilerOptions)).pipe(process.stdout);
+		process.stdin
+			.pipe(compiler(compilerOptions))
+			.pipe(es.mapSync(data => data.code))
+			.pipe(process.stdout);
 	}
 
 // ### Compile a directory of .latte files
@@ -76,7 +83,7 @@ if ( !files.length ) {
 		input = input.slice(input.indexOf('\n'));
 	}
 
-	var output = compiler.compile(input, compilerOptions);
+	var output = compiler.compile(input, compilerOptions).code;
 
 	var mainModule = require.main;
 

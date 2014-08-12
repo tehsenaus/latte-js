@@ -1,0 +1,15 @@
+// # Latte.js Custom AST Types
+
+var types = require('recast/node_modules/ast-types');
+
+
+types.Type.def('ComprehensionBlockVar')
+	.bases('AssignmentExpression');
+
+
+types.Type.def('MonadExpression')
+	.bases('Statement')
+	.field('body', types.Type.def('BlockStatement'))
+	.build('body');
+
+module.exports = types;
