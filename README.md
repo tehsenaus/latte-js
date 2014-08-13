@@ -114,7 +114,7 @@ for (let i in [...]) {
 
 ## Changes
 
-### 0.4.0-dev
+### 0.4.0
 - Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
 - Added benchmarks (just for generators, initially).
 - Optimised generators for tail call emulation use case - performance is comparable to trampoline.

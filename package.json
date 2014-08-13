@@ -40,7 +40,8 @@
     "event-stream": "~3.0.16",
     "recast": "~0.6.10",
     "es6-rest-params": "git+https://github.com/tehsenaus/es6-rest-params.git#remove-esprima-dep",
-    "es6-spread": "~0.1.0"
+    "es6-spread": "~0.1.0",
+    "convert-source-map": "~0.4.1"
   },
   "devDependencies": {
     "grunt": "~0.4.1",

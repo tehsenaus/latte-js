@@ -16,7 +16,9 @@ var
 	mkdirp = require('mkdirp'),
 	path = require('path'),
 	glob = require("glob"),
-	util = require('util');
+	util = require('util'),
+
+	convertSourceMap = require('convert-source-map');
 
 
 // Streaming API
@@ -53,7 +55,7 @@ function compiler(options) {
 			} catch (e) {
 				// If compilation fails in interactive mode, just wait for more data.
 				// TODO: properly detect genuine syntax errors, and reset the buffer.
-				console.log(e, e.stack);
+				// console.log(e, e.stack);
 			}
 		}
 	}, function end() {
@@ -72,6 +74,15 @@ function compiler(options) {
 
 		// After a successful compile, the buffer is reset. 
 		buf = [];
+
+		if ( options.inlineSourceMap ) {
+			output = extend(output, {
+				code: (output.code + "\n"
+					+ convertSourceMap.fromObject(output.map).toComment()
+				)
+			})
+		}
+
 		return output;
 	}
 	
@@ -124,14 +135,16 @@ compiler.files = function (options) {
 
 				stream.emit('data', output);
 
-				if ( mapDir ) {
-					var mapName = file.replace('.latte', '.map.json'),
-						mapFilePath = path.join(mapDir, mapName),
-						mapFileDir = path.dirname(mapFilePath);
+				if ( mapDir || options.inlineSourceMap ) {
 					options.sourceFileName = path.relative(
 						mapFileDir, path.join(options.inputDir, file));
 					options.sourceMapName = path.relative(
 						mapFileDir, path.join(options.outputDir, output));
+				}
+				if ( mapDir ) {
+					var mapName = file.replace('.latte', '.map.json'),
+						mapFilePath = path.join(mapDir, mapName),
+						mapFileDir = path.dirname(mapFilePath);
 				}
 
 				var compiler = compileFile(filePath, options);
@@ -178,8 +191,8 @@ function compile(source, options) {
 		// The extended version of esprima-harmony is used, adding Latte.js syntax
 		esprima: options.esprima || esprima,
 
-		sourceFileName: options.sourceFileName,
-		sourceMapName: options.sourceMapName
+		sourceFileName: options.sourceFileName || (options.inlineSourceMap && "source.latte"),
+		sourceMapName: options.sourceMapName || (options.inlineSourceMap && "compiled-latte.js")
 	};
 
 	source = source.trim();
@@ -247,6 +260,15 @@ function compileDir(inputDir, outputDir, options) {
 }
 compiler.compileDir = compileDir;
 
+
+
+function extend(base, properties) {
+	function O() {
+		for ( var n in properties ) this[n] = properties[n];
+	}
+	O.prototype = base;
+	return new O();
+}
 
 
 // Testing

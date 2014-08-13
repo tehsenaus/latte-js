@@ -11,7 +11,7 @@ module.exports = function(grunt) {
     },
     shell: {
       buildTest: {
-        command: 'node bin/latte -c test/src/ -o test/out/ -m test/map/',
+        command: 'node bin/latte -c test/src/ -o test/out/ -m -M test/map/',
         options: {
             stdout: true,
             stderr: true,
