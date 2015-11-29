@@ -56,7 +56,6 @@ See the proper documentation at http://lattejs.com
 - [Arrow functions](http://tc39wiki.calculist.org/es6/arrow-functions/)
 - Generators
 - Iterators
-- Array comprehensions
 - Destructuring assignment
 - Template strings
 - Block-scoped variables ('let' statement)
@@ -67,10 +66,15 @@ See the proper documentation at http://lattejs.com
 ### Latte JS Features
 
 - Monad syntax (similar to Haskell) for flattening async control flow
+- Array comprehensions
 - Declare variables in array comprehensions (more functional programming goodness)
 - Filter with 'if' in for-of/for-in statements
 
 ## Changes
+
+### 0.4.1
+- Registered .latte extension with Node.js, so .latte modules can be required (#15)
+- Removed git:// dependencies
 
 ### 0.4.0
 - Changed iterators & generators to reflect latest ES6 spec (no more StopIteration).
