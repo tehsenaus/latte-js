@@ -135,16 +135,15 @@ compiler.files = function (options) {
 
 				stream.emit('data', output);
 
-				if ( mapDir || options.inlineSourceMap ) {
-					options.sourceFileName = path.relative(
-						mapFileDir, path.join(options.inputDir, file));
-					options.sourceMapName = path.relative(
-						mapFileDir, path.join(options.outputDir, output));
-				}
 				if ( mapDir ) {
 					var mapName = file.replace('.latte', '.map.json'),
 						mapFilePath = path.join(mapDir, mapName),
 						mapFileDir = path.dirname(mapFilePath);
+
+					options.sourceFileName = path.relative(
+						mapFileDir, path.join(options.inputDir, file));
+					options.sourceMapName = path.relative(
+						mapFileDir, path.join(options.outputDir, output));
 				}
 
 				var compiler = compileFile(filePath, options);
