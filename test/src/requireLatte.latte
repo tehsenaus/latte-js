@@ -1,0 +1,20 @@
+
+var should = require("should");
+var childProc = require('child_process');
+
+describe('Latte Files', function () {
+
+	it('can be require()d', function (done) {
+		
+		childProc.exec(
+			__dirname + '/../../bin/latte ' + __dirname + '/../resources/testRequire.latte',
+			function (err, output) {
+				should.not.exist(err);
+				output.should.equal('test ok');
+				done();
+			}
+		)
+
+	})
+
+})

@@ -97,5 +97,12 @@ if ( !files.length ) {
 		delete require.cache[k];
 	});
 	
+	if (require.extensions) {
+		require.extensions['.latte'] = (module, filename) => {
+			var output = compiler.compile( fs.readFileSync(filename, 'utf8'), {} );
+  			module._compile(output.code, filename);
+		}
+	}
+
 	mainModule._compile(output, mainModule.filename)
 }
